@@ -322,6 +322,15 @@ d365-xray/
 
 MIT
 
+## ⚠️ Disclaimer
+
+This repository is a private project.
+
+It is provided without any warranty, guarantee, or representation of any kind.
+Use is entirely at your own risk. The author accepts no liability for direct or
+indirect damages, data loss, outages, or any other consequences resulting from
+the use of this project.
+
 ---
 
 > Built with ❤️ for Dynamics 365 administrators and architects who need deep visibility into their environments.
