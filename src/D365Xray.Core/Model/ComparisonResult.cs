@@ -56,7 +56,15 @@ public enum FindingCategory
     MissingComponent,
     VersionMismatch,
     SecurityRisk,
-    ConfigurationAnomaly
+    ConfigurationAnomaly,
+    ConnectionConfiguration,
+    IntegrationEndpointDrift,
+    ConnectorGovernance,
+    PluginConfiguration,
+    WorkflowConfiguration,
+    WebResourceDrift,
+    EnvironmentVariableDrift,
+    BusinessRuleDrift
 }
 
 /// <summary>

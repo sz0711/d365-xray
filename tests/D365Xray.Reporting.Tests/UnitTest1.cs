@@ -161,6 +161,39 @@ public class ReportExporterTests : IDisposable
     }
 
     [Fact]
+    public void Markdown_AnalysisCoverage_Shows_Applicability_For_SingleDevRun()
+    {
+        var report = new RiskReport
+        {
+            Metadata = new SnapshotMetadata
+            {
+                CapturedAtUtc = new DateTimeOffset(2026, 3, 22, 10, 0, 0, TimeSpan.Zero),
+                ToolVersion = "1.0.0-test"
+            },
+            ComparedEnvironments =
+            [
+                new EnvironmentInfo
+                {
+                    EnvironmentId = "dev-001",
+                    DisplayName = "Dev",
+                    EnvironmentUrl = new Uri("https://dev.crm.dynamics.com"),
+                    EnvironmentType = EnvironmentType.Dev
+                }
+            ],
+            OverallRiskScore = 0,
+            OverallRiskLevel = RiskLevel.Low,
+            Findings = [],
+            SeverityCounts = new Dictionary<Severity, int>()
+        };
+
+        var md = MarkdownReportExporter.Build(report);
+
+        Assert.Contains("| Category | Scope | Applicable | Findings |", md);
+        Assert.Contains("| WorkflowConfiguration | cross-env + prod-like(single-env) | no | 0 |", md);
+        Assert.Contains("| ConfigurationAnomaly | single-env | yes | 0 |", md);
+    }
+
+    [Fact]
     public void Markdown_IncludesRuleId()
     {
         var report = MakeReport(
@@ -218,6 +251,39 @@ public class ReportExporterTests : IDisposable
 
         Assert.Contains("<details open>", html);
         Assert.Contains("</details>", html);
+    }
+
+    [Fact]
+    public void Html_AnalysisCoverage_Shows_Applicability_Columns()
+    {
+        var report = new RiskReport
+        {
+            Metadata = new SnapshotMetadata
+            {
+                CapturedAtUtc = new DateTimeOffset(2026, 3, 22, 10, 0, 0, TimeSpan.Zero),
+                ToolVersion = "1.0.0-test"
+            },
+            ComparedEnvironments =
+            [
+                new EnvironmentInfo
+                {
+                    EnvironmentId = "dev-001",
+                    DisplayName = "Dev",
+                    EnvironmentUrl = new Uri("https://dev.crm.dynamics.com"),
+                    EnvironmentType = EnvironmentType.Dev
+                }
+            ],
+            OverallRiskScore = 0,
+            OverallRiskLevel = RiskLevel.Low,
+            Findings = [],
+            SeverityCounts = new Dictionary<Severity, int>()
+        };
+
+        var html = HtmlReportExporter.Build(report);
+
+        Assert.Contains("<th>Scope</th><th>Applicable</th><th>Findings</th>", html);
+        Assert.Contains("<td>WorkflowConfiguration</td><td>cross-env + prod-like(single-env)</td><td>no</td><td>0</td>", html);
+        Assert.Contains("<td>ConfigurationAnomaly</td><td>single-env</td><td>yes</td><td>0</td>", html);
     }
 
     [Fact]

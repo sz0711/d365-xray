@@ -159,6 +159,166 @@ public static class DefaultRiskRules
             BaseScore = 5,
             Description = "An informational configuration note. " +
                 "Expected in development environments — no action required."
+        },
+
+        // ── Connection configuration ────────────────────────────
+        new RiskRule
+        {
+            RuleId = "R-CON-001",
+            Category = FindingCategory.ConnectionConfiguration,
+            MinimumSeverity = Severity.High,
+            BaseScore = 85,
+            Description = "A connection reference is missing or has no active connection. " +
+                "Flows and plugins relying on this reference will fail at runtime."
+        },
+        new RiskRule
+        {
+            RuleId = "R-CON-002",
+            Category = FindingCategory.ConnectionConfiguration,
+            MinimumSeverity = null,
+            BaseScore = 45,
+            Description = "A connection reference configuration differs between environments. " +
+                "Verify whether the difference is due to environment-specific connection setup."
+        },
+
+        // ── Integration endpoint drift ──────────────────────────
+        new RiskRule
+        {
+            RuleId = "R-EP-001",
+            Category = FindingCategory.IntegrationEndpointDrift,
+            MinimumSeverity = Severity.High,
+            BaseScore = 80,
+            Description = "A service endpoint or webhook is missing or has a different auth/contract type. " +
+                "This can break integrations and data flow between systems."
+        },
+        new RiskRule
+        {
+            RuleId = "R-EP-002",
+            Category = FindingCategory.IntegrationEndpointDrift,
+            MinimumSeverity = null,
+            BaseScore = 40,
+            Description = "A service endpoint configuration differs between environments. " +
+                "Review whether the difference is environment-specific."
+        },
+
+        // ── Connector governance ────────────────────────────────
+        new RiskRule
+        {
+            RuleId = "R-CCON-001",
+            Category = FindingCategory.ConnectorGovernance,
+            MinimumSeverity = Severity.Medium,
+            BaseScore = 50,
+            Description = "A custom connector is missing or ungoverned in a target environment. " +
+                "Review connector governance policies."
+        },
+        new RiskRule
+        {
+            RuleId = "R-CCON-002",
+            Category = FindingCategory.ConnectorGovernance,
+            MinimumSeverity = null,
+            BaseScore = 20,
+            Description = "A custom connector governance note. " +
+                "Extra connectors in non-baseline environments may indicate ungoverned proliferation."
+        },
+
+        // ── Plugin configuration ────────────────────────────────
+        new RiskRule
+        {
+            RuleId = "R-PLG-001",
+            Category = FindingCategory.PluginConfiguration,
+            MinimumSeverity = Severity.High,
+            BaseScore = 85,
+            Description = "A plugin assembly or SDK step is missing, disabled, or running at a " +
+                "different pipeline stage. This can cause data processing failures."
+        },
+        new RiskRule
+        {
+            RuleId = "R-PLG-002",
+            Category = FindingCategory.PluginConfiguration,
+            MinimumSeverity = null,
+            BaseScore = 40,
+            Description = "A plugin configuration differs between environments. " +
+                "Review version, isolation mode, and step configuration."
+        },
+
+        // ── Workflow configuration ──────────────────────────────
+        new RiskRule
+        {
+            RuleId = "R-WFL-001",
+            Category = FindingCategory.WorkflowConfiguration,
+            MinimumSeverity = Severity.High,
+            BaseScore = 75,
+            Description = "A workflow or flow is missing or deactivated in a target environment. " +
+                "Automated business processes may not execute."
+        },
+        new RiskRule
+        {
+            RuleId = "R-WFL-002",
+            Category = FindingCategory.WorkflowConfiguration,
+            MinimumSeverity = null,
+            BaseScore = 35,
+            Description = "A workflow configuration differs between environments. " +
+                "Review trigger, mode, and activation settings."
+        },
+
+        // ── Web resource drift ──────────────────────────────────
+        new RiskRule
+        {
+            RuleId = "R-WEB-001",
+            Category = FindingCategory.WebResourceDrift,
+            MinimumSeverity = Severity.High,
+            BaseScore = 70,
+            Description = "A web resource (especially JavaScript/HTML) is missing or has a type mismatch. " +
+                "This can cause form errors and broken UI customizations."
+        },
+        new RiskRule
+        {
+            RuleId = "R-WEB-002",
+            Category = FindingCategory.WebResourceDrift,
+            MinimumSeverity = null,
+            BaseScore = 25,
+            Description = "A web resource differs between environments. " +
+                "Review whether the difference is due to incomplete solution deployment."
+        },
+
+        // ── Environment variable drift ──────────────────────────
+        new RiskRule
+        {
+            RuleId = "R-ENV-001",
+            Category = FindingCategory.EnvironmentVariableDrift,
+            MinimumSeverity = Severity.High,
+            BaseScore = 75,
+            Description = "A required environment variable is missing or has no value. " +
+                "Components depending on this variable will fail at runtime."
+        },
+        new RiskRule
+        {
+            RuleId = "R-ENV-002",
+            Category = FindingCategory.EnvironmentVariableDrift,
+            MinimumSeverity = null,
+            BaseScore = 30,
+            Description = "An environment variable value or definition differs between environments. " +
+                "Verify whether the difference is environment-specific configuration."
+        },
+
+        // ── Business rule drift ─────────────────────────────────
+        new RiskRule
+        {
+            RuleId = "R-BRL-001",
+            Category = FindingCategory.BusinessRuleDrift,
+            MinimumSeverity = Severity.High,
+            BaseScore = 70,
+            Description = "A business rule is missing or deactivated in a target environment. " +
+                "Data validation and field behavior may differ from expectations."
+        },
+        new RiskRule
+        {
+            RuleId = "R-BRL-002",
+            Category = FindingCategory.BusinessRuleDrift,
+            MinimumSeverity = null,
+            BaseScore = 30,
+            Description = "A business rule configuration differs between environments. " +
+                "Review scope, entity binding, and activation state."
         }
     ];
 }

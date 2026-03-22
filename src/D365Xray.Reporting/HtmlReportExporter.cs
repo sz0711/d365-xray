@@ -87,6 +87,30 @@ internal sealed class HtmlReportExporter
             sb.AppendLine("</section>");
         }
 
+        // Analysis coverage (always show, even if a category has 0 findings)
+        var categoryCounts = report.Findings
+            .GroupBy(f => f.Category)
+            .ToDictionary(g => g.Key, g => g.Count());
+        var envCount = report.ComparedEnvironments.Count;
+        var hasProdLike = report.ComparedEnvironments.Any(e =>
+            e.EnvironmentType is EnvironmentType.Prod or EnvironmentType.Staging);
+
+        sb.AppendLine("<section class=\"analysis-coverage\">");
+        sb.AppendLine("<h2>Analysis Coverage</h2>");
+        sb.AppendLine("<table><thead><tr><th>Category</th><th>Scope</th><th>Applicable</th><th>Findings</th></tr></thead><tbody>");
+        foreach (var category in Enum.GetValues<FindingCategory>().OrderBy(c => c.ToString(), StringComparer.Ordinal))
+        {
+            categoryCounts.TryGetValue(category, out var count);
+            var scope = GetCategoryScope(category);
+            var applicable = IsCategoryApplicable(category, envCount, hasProdLike) ? "yes" : "no";
+            sb.AppendLine(CultureInfo.InvariantCulture,
+                $"<tr><td>{Encode(category.ToString())}</td><td>{Encode(scope)}</td><td>{applicable}</td><td>{count}</td></tr>");
+        }
+        sb.AppendLine("</tbody></table>");
+        sb.AppendLine("<p class=\"meta\">Applicable=no means the check is out of scope for the current run shape (for example, cross-environment checks in a single-environment run).</p>");
+        sb.AppendLine("<p class=\"meta\">Categories with 0 findings were analyzed but produced no issues for this run.</p>");
+        sb.AppendLine("</section>");
+
         // Findings
         if (report.Findings.Count > 0)
         {
@@ -150,6 +174,38 @@ internal sealed class HtmlReportExporter
     }
 
     private static string Encode(string value) => HttpUtility.HtmlEncode(value);
+
+    private static string GetCategoryScope(FindingCategory category) => category switch
+    {
+        FindingCategory.LayerOverride => "cross-env + single-env",
+        FindingCategory.DependencyConflict => "cross-env + single-env",
+        FindingCategory.ConnectionConfiguration => "cross-env + single-env",
+        FindingCategory.PluginConfiguration => "cross-env + single-env",
+        FindingCategory.EnvironmentVariableDrift => "cross-env + single-env",
+        FindingCategory.WorkflowConfiguration => "cross-env + prod-like(single-env)",
+        FindingCategory.BusinessRuleDrift => "cross-env + prod-like(single-env)",
+        FindingCategory.ConfigurationAnomaly => "single-env",
+        _ => "cross-env"
+    };
+
+    private static bool IsCategoryApplicable(FindingCategory category, int envCount, bool hasProdLike)
+    {
+        var isSingleEnvRun = envCount == 1;
+        var isCrossEnvRun = envCount > 1;
+
+        return category switch
+        {
+            FindingCategory.ConfigurationAnomaly => isSingleEnvRun,
+            FindingCategory.LayerOverride => isCrossEnvRun || isSingleEnvRun,
+            FindingCategory.DependencyConflict => isCrossEnvRun || isSingleEnvRun,
+            FindingCategory.ConnectionConfiguration => isCrossEnvRun || isSingleEnvRun,
+            FindingCategory.PluginConfiguration => isCrossEnvRun || isSingleEnvRun,
+            FindingCategory.EnvironmentVariableDrift => isCrossEnvRun || isSingleEnvRun,
+            FindingCategory.WorkflowConfiguration => isCrossEnvRun || (isSingleEnvRun && hasProdLike),
+            FindingCategory.BusinessRuleDrift => isCrossEnvRun || (isSingleEnvRun && hasProdLike),
+            _ => isCrossEnvRun
+        };
+    }
 
     private static void AppendCss(StringBuilder sb)
     {

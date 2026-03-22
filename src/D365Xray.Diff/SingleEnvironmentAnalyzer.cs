@@ -33,6 +33,31 @@ internal static class SingleEnvironmentAnalyzer
         {
             yield return finding;
         }
+
+        foreach (var finding in DetectDisabledSdkSteps(snapshot))
+        {
+            yield return finding;
+        }
+
+        foreach (var finding in DetectDeactivatedWorkflows(snapshot))
+        {
+            yield return finding;
+        }
+
+        foreach (var finding in DetectDeactivatedBusinessRules(snapshot))
+        {
+            yield return finding;
+        }
+
+        foreach (var finding in DetectMissingEnvironmentVariableValues(snapshot))
+        {
+            yield return finding;
+        }
+
+        foreach (var finding in DetectOrphanedConnectionReferences(snapshot))
+        {
+            yield return finding;
+        }
     }
 
     /// <summary>
@@ -133,6 +158,151 @@ internal static class SingleEnvironmentAnalyzer
                 {
                     ["Prefix"] = group.Key,
                     ["Publishers"] = string.Join(", ", publishers)
+                }
+            };
+        }
+    }
+
+    /// <summary>
+    /// Flags SDK steps that are disabled — may indicate incomplete deployment or intentional deactivation.
+    /// </summary>
+    private static IEnumerable<Finding> DetectDisabledSdkSteps(EnvironmentSnapshot snapshot)
+    {
+        var isProdLike = IsProductionLike(snapshot.Environment.EnvironmentType);
+
+        foreach (var step in snapshot.SdkSteps.Where(s => s.IsDisabled).OrderBy(s => s.Name, StringComparer.OrdinalIgnoreCase))
+        {
+            yield return new Finding
+            {
+                FindingId = $"SINGLE-STEP-DISABLED-{step.Name}-{snapshot.Environment.DisplayName}",
+                Category = FindingCategory.PluginConfiguration,
+                Severity = isProdLike ? Severity.Medium : Severity.Info,
+                Title = $"SDK step '{step.Name}' is disabled in {snapshot.Environment.DisplayName}",
+                Description = $"Plugin step '{step.Name}' ({step.MessageName}/{step.PrimaryEntity}) is disabled. " +
+                    (isProdLike ? "Verify this is intentional in a production-like environment." : "Expected for development."),
+                AffectedEnvironments = [snapshot.Environment.DisplayName],
+                Details = new Dictionary<string, string>
+                {
+                    ["StepName"] = step.Name,
+                    ["Message"] = step.MessageName ?? "(null)",
+                    ["Entity"] = step.PrimaryEntity ?? "(null)"
+                }
+            };
+        }
+    }
+
+    /// <summary>
+    /// Flags workflows/flows that are deactivated in production-like environments.
+    /// </summary>
+    private static IEnumerable<Finding> DetectDeactivatedWorkflows(EnvironmentSnapshot snapshot)
+    {
+        var isProdLike = IsProductionLike(snapshot.Environment.EnvironmentType);
+        if (!isProdLike)
+        {
+            yield break;
+        }
+
+        foreach (var wf in snapshot.Workflows.Where(w => !w.IsActivated).OrderBy(w => w.Name, StringComparer.OrdinalIgnoreCase))
+        {
+            yield return new Finding
+            {
+                FindingId = $"SINGLE-WFL-INACTIVE-{wf.Name}-{snapshot.Environment.DisplayName}",
+                Category = FindingCategory.WorkflowConfiguration,
+                Severity = Severity.Medium,
+                Title = $"Workflow '{wf.Name}' is inactive in {snapshot.Environment.DisplayName}",
+                Description = $"Workflow '{wf.Name}' ({wf.Category}) is deactivated in a production-like environment. " +
+                    $"Verify this is intentional.",
+                AffectedEnvironments = [snapshot.Environment.DisplayName],
+                Details = new Dictionary<string, string>
+                {
+                    ["WorkflowName"] = wf.Name,
+                    ["Category"] = wf.Category.ToString()
+                }
+            };
+        }
+    }
+
+    /// <summary>
+    /// Flags business rules that are deactivated in production-like environments.
+    /// </summary>
+    private static IEnumerable<Finding> DetectDeactivatedBusinessRules(EnvironmentSnapshot snapshot)
+    {
+        var isProdLike = IsProductionLike(snapshot.Environment.EnvironmentType);
+        if (!isProdLike)
+        {
+            yield break;
+        }
+
+        foreach (var rule in snapshot.BusinessRules.Where(r => !r.IsActivated).OrderBy(r => r.Name, StringComparer.OrdinalIgnoreCase))
+        {
+            yield return new Finding
+            {
+                FindingId = $"SINGLE-BRL-INACTIVE-{rule.Name}-{snapshot.Environment.DisplayName}",
+                Category = FindingCategory.BusinessRuleDrift,
+                Severity = Severity.Medium,
+                Title = $"Business rule '{rule.Name}' is inactive in {snapshot.Environment.DisplayName}",
+                Description = $"Business rule '{rule.Name}' on entity '{rule.PrimaryEntity}' is deactivated " +
+                    $"in a production-like environment. Verify this is intentional.",
+                AffectedEnvironments = [snapshot.Environment.DisplayName],
+                Details = new Dictionary<string, string>
+                {
+                    ["RuleName"] = rule.Name,
+                    ["Entity"] = rule.PrimaryEntity
+                }
+            };
+        }
+    }
+
+    /// <summary>
+    /// Flags required environment variables that have no value.
+    /// </summary>
+    private static IEnumerable<Finding> DetectMissingEnvironmentVariableValues(EnvironmentSnapshot snapshot)
+    {
+        foreach (var v in snapshot.EnvironmentVariables
+            .Where(v => v.IsRequired && !v.HasValue)
+            .OrderBy(v => v.SchemaName, StringComparer.OrdinalIgnoreCase))
+        {
+            yield return new Finding
+            {
+                FindingId = $"SINGLE-ENVVAR-NOVAL-{v.SchemaName}-{snapshot.Environment.DisplayName}",
+                Category = FindingCategory.EnvironmentVariableDrift,
+                Severity = Severity.High,
+                Title = $"Required environment variable '{v.SchemaName}' has no value",
+                Description = $"Environment variable '{v.DisplayName ?? v.SchemaName}' ({v.Type}) is marked as " +
+                    $"required but has no default or current value in {snapshot.Environment.DisplayName}.",
+                AffectedEnvironments = [snapshot.Environment.DisplayName],
+                Details = new Dictionary<string, string>
+                {
+                    ["SchemaName"] = v.SchemaName,
+                    ["Type"] = v.Type.ToString()
+                }
+            };
+        }
+    }
+
+    /// <summary>
+    /// Flags connection references that have no connection ID bound (orphaned).
+    /// </summary>
+    private static IEnumerable<Finding> DetectOrphanedConnectionReferences(EnvironmentSnapshot snapshot)
+    {
+        foreach (var cr in snapshot.ConnectionReferences
+            .Where(c => string.IsNullOrEmpty(c.ConnectionId))
+            .OrderBy(c => c.ConnectionReferenceLogicalName, StringComparer.OrdinalIgnoreCase))
+        {
+            yield return new Finding
+            {
+                FindingId = $"SINGLE-CONN-ORPHAN-{cr.ConnectionReferenceLogicalName}-{snapshot.Environment.DisplayName}",
+                Category = FindingCategory.ConnectionConfiguration,
+                Severity = Severity.High,
+                Title = $"Connection reference '{cr.ConnectionReferenceLogicalName}' has no connection",
+                Description = $"Connection reference '{cr.DisplayName ?? cr.ConnectionReferenceLogicalName}' " +
+                    $"(connector: {cr.ConnectorId ?? "unknown"}) has no active connection bound. " +
+                    $"Flows and plugins relying on this reference will fail.",
+                AffectedEnvironments = [snapshot.Environment.DisplayName],
+                Details = new Dictionary<string, string>
+                {
+                    ["ConnectionReferenceLogicalName"] = cr.ConnectionReferenceLogicalName,
+                    ["ConnectorId"] = cr.ConnectorId ?? "(null)"
                 }
             };
         }

@@ -60,6 +60,51 @@ internal sealed class DataverseConnector : IEnvironmentConnector
         var settings = await SettingsCollector.CollectAsync(_client, _logger, cancellationToken);
         _logger.LogInformation("Collected {Count} environment settings", settings.Count);
 
+        // 7. Collect connection references
+        _logger.LogInformation("Collecting connection references...");
+        var connectionRefs = await ConnectionReferenceCollector.CollectAsync(_client, _logger, cancellationToken);
+        _logger.LogInformation("Collected {Count} connection references", connectionRefs.Count);
+
+        // 8. Collect service endpoints (webhooks)
+        _logger.LogInformation("Collecting service endpoints...");
+        var endpoints = await ServiceEndpointCollector.CollectAsync(_client, _logger, cancellationToken);
+        _logger.LogInformation("Collected {Count} service endpoints", endpoints.Count);
+
+        // 9. Collect custom connectors
+        _logger.LogInformation("Collecting custom connectors...");
+        var connectors = await CustomConnectorCollector.CollectAsync(_client, _logger, cancellationToken);
+        _logger.LogInformation("Collected {Count} custom connectors", connectors.Count);
+
+        // 10. Collect environment variables
+        _logger.LogInformation("Collecting environment variables...");
+        var envVars = await EnvironmentVariableCollector.CollectAsync(_client, _logger, cancellationToken);
+        _logger.LogInformation("Collected {Count} environment variables", envVars.Count);
+
+        // 11. Collect plugin assemblies
+        _logger.LogInformation("Collecting plugin assemblies...");
+        var plugins = await PluginAssemblyCollector.CollectAsync(_client, _logger, cancellationToken);
+        _logger.LogInformation("Collected {Count} plugin assemblies", plugins.Count);
+
+        // 12. Collect SDK message processing steps
+        _logger.LogInformation("Collecting SDK steps...");
+        var sdkSteps = await SdkStepCollector.CollectAsync(_client, _logger, cancellationToken);
+        _logger.LogInformation("Collected {Count} SDK steps", sdkSteps.Count);
+
+        // 13. Collect web resources
+        _logger.LogInformation("Collecting web resources...");
+        var webResources = await WebResourceCollector.CollectAsync(_client, _logger, cancellationToken);
+        _logger.LogInformation("Collected {Count} web resources", webResources.Count);
+
+        // 14. Collect workflows (classic + modern flows, excluding business rules)
+        _logger.LogInformation("Collecting workflows...");
+        var workflows = await WorkflowCollector.CollectAsync(_client, _logger, cancellationToken);
+        _logger.LogInformation("Collected {Count} workflows", workflows.Count);
+
+        // 15. Collect business rules
+        _logger.LogInformation("Collecting business rules...");
+        var businessRules = await BusinessRuleCollector.CollectAsync(_client, _logger, cancellationToken);
+        _logger.LogInformation("Collected {Count} business rules", businessRules.Count);
+
         stopwatch.Stop();
 
         _logger.LogInformation("Snapshot capture completed for {EnvName} in {Duration}",
@@ -78,7 +123,16 @@ internal sealed class DataverseConnector : IEnvironmentConnector
             Components = components,
             Layers = layers,
             Dependencies = dependencies,
-            Settings = settings
+            Settings = settings,
+            ConnectionReferences = connectionRefs,
+            ServiceEndpoints = endpoints,
+            CustomConnectors = connectors,
+            EnvironmentVariables = envVars,
+            PluginAssemblies = plugins,
+            SdkSteps = sdkSteps,
+            WebResources = webResources,
+            Workflows = workflows,
+            BusinessRules = businessRules
         };
     }
 

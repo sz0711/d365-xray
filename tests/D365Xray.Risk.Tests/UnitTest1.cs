@@ -205,4 +205,34 @@ public class RiskRuleEngineTests
             Assert.Contains(category, coveredCategories);
         }
     }
+
+    // ── New category rule matching ──────────────────────────
+
+    [Theory]
+    [InlineData(FindingCategory.ConnectionConfiguration, Severity.High, "R-CON-001", 85)]
+    [InlineData(FindingCategory.ConnectionConfiguration, Severity.Low, "R-CON-002", 45)]
+    [InlineData(FindingCategory.IntegrationEndpointDrift, Severity.High, "R-EP-001", 80)]
+    [InlineData(FindingCategory.IntegrationEndpointDrift, Severity.Info, "R-EP-002", 40)]
+    [InlineData(FindingCategory.ConnectorGovernance, Severity.High, "R-CCON-001", 50)]
+    [InlineData(FindingCategory.ConnectorGovernance, Severity.Low, "R-CCON-002", 20)]
+    [InlineData(FindingCategory.PluginConfiguration, Severity.High, "R-PLG-001", 85)]
+    [InlineData(FindingCategory.PluginConfiguration, Severity.Low, "R-PLG-002", 40)]
+    [InlineData(FindingCategory.WorkflowConfiguration, Severity.High, "R-WFL-001", 75)]
+    [InlineData(FindingCategory.WorkflowConfiguration, Severity.Low, "R-WFL-002", 35)]
+    [InlineData(FindingCategory.WebResourceDrift, Severity.High, "R-WEB-001", 70)]
+    [InlineData(FindingCategory.WebResourceDrift, Severity.Low, "R-WEB-002", 25)]
+    [InlineData(FindingCategory.EnvironmentVariableDrift, Severity.High, "R-ENV-001", 75)]
+    [InlineData(FindingCategory.EnvironmentVariableDrift, Severity.Low, "R-ENV-002", 30)]
+    [InlineData(FindingCategory.BusinessRuleDrift, Severity.High, "R-BRL-001", 70)]
+    [InlineData(FindingCategory.BusinessRuleDrift, Severity.Low, "R-BRL-002", 30)]
+    public void MatchRule_NewCategories_ReturnCorrectRuleAndScore(
+        FindingCategory category, Severity severity, string expectedRuleId, int expectedScore)
+    {
+        var finding = MakeFinding("F-NEW", category, severity);
+        var rule = _engine.MatchRule(finding);
+
+        Assert.NotNull(rule);
+        Assert.Equal(expectedRuleId, rule.RuleId);
+        Assert.Equal(expectedScore, rule.BaseScore);
+    }
 }

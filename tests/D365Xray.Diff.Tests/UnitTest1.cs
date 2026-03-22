@@ -18,7 +18,17 @@ public class SnapshotDiffEngineTests
         IReadOnlyList<SolutionComponent>? components = null,
         IReadOnlyList<ComponentLayer>? layers = null,
         IReadOnlyList<SolutionDependency>? dependencies = null,
-        IReadOnlyList<EnvironmentSetting>? settings = null)
+        IReadOnlyList<EnvironmentSetting>? settings = null,
+        IReadOnlyList<ConnectionReference>? connectionReferences = null,
+        IReadOnlyList<ServiceEndpoint>? serviceEndpoints = null,
+        IReadOnlyList<CustomConnector>? customConnectors = null,
+        IReadOnlyList<EnvironmentVariable>? environmentVariables = null,
+        IReadOnlyList<PluginAssembly>? pluginAssemblies = null,
+        IReadOnlyList<SdkStep>? sdkSteps = null,
+        IReadOnlyList<WebResource>? webResources = null,
+        IReadOnlyList<WorkflowDefinition>? workflows = null,
+        IReadOnlyList<BusinessRule>? businessRules = null,
+        EnvironmentType envType = EnvironmentType.Unknown)
     {
         return new EnvironmentSnapshot
         {
@@ -31,13 +41,23 @@ public class SnapshotDiffEngineTests
             {
                 EnvironmentId = envName.ToLowerInvariant(),
                 DisplayName = envName,
-                EnvironmentUrl = new Uri($"https://{envName.ToLowerInvariant()}.crm4.dynamics.com")
+                EnvironmentUrl = new Uri($"https://{envName.ToLowerInvariant()}.crm4.dynamics.com"),
+                EnvironmentType = envType
             },
             Solutions = solutions ?? [],
             Components = components ?? [],
             Layers = layers ?? [],
             Dependencies = dependencies ?? [],
-            Settings = settings ?? []
+            Settings = settings ?? [],
+            ConnectionReferences = connectionReferences ?? [],
+            ServiceEndpoints = serviceEndpoints ?? [],
+            CustomConnectors = customConnectors ?? [],
+            EnvironmentVariables = environmentVariables ?? [],
+            PluginAssemblies = pluginAssemblies ?? [],
+            SdkSteps = sdkSteps ?? [],
+            WebResources = webResources ?? [],
+            Workflows = workflows ?? [],
+            BusinessRules = businessRules ?? []
         };
     }
 
@@ -313,5 +333,633 @@ public class SnapshotDiffEngineTests
         var sorted = ids.OrderBy(id => id, StringComparer.Ordinal).ToList();
 
         Assert.Equal(sorted, ids);
+    }
+
+    // ── Connection drift ────────────────────────────────────────
+
+    [Fact]
+    public void Detects_Missing_ConnectionReference()
+    {
+        var refs = new[]
+        {
+            new ConnectionReference
+            {
+                ConnectionReferenceId = Guid.NewGuid(),
+                ConnectionReferenceLogicalName = "cr_sharepoint",
+                ConnectorId = "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                ConnectionId = "abc"
+            }
+        };
+
+        IDiffEngine engine = new SnapshotDiffEngine();
+        var result = engine.Compare([
+            MakeSnapshot("Dev", connectionReferences: refs),
+            MakeSnapshot("Test")
+        ]);
+
+        var finding = Assert.Single(result.Findings, f => f.Category == FindingCategory.ConnectionConfiguration);
+        Assert.Contains("cr_sharepoint", finding.FindingId);
+        Assert.Equal(Severity.High, finding.Severity);
+    }
+
+    [Fact]
+    public void Detects_ConnectionReference_Connector_Drift()
+    {
+        var devRefs = new[]
+        {
+            new ConnectionReference
+            {
+                ConnectionReferenceId = Guid.NewGuid(),
+                ConnectionReferenceLogicalName = "cr_sharepoint",
+                ConnectorId = "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                ConnectionId = "abc"
+            }
+        };
+        var testRefs = new[]
+        {
+            new ConnectionReference
+            {
+                ConnectionReferenceId = Guid.NewGuid(),
+                ConnectionReferenceLogicalName = "cr_sharepoint",
+                ConnectorId = "/providers/Microsoft.PowerApps/apis/shared_onedrive",
+                ConnectionId = "def"
+            }
+        };
+
+        IDiffEngine engine = new SnapshotDiffEngine();
+        var result = engine.Compare([
+            MakeSnapshot("Dev", connectionReferences: devRefs),
+            MakeSnapshot("Test", connectionReferences: testRefs)
+        ]);
+
+        var finding = Assert.Single(result.Findings, f => f.FindingId.Contains("CONNECTORDRIFT"));
+        Assert.Equal(Severity.Medium, finding.Severity);
+    }
+
+    [Fact]
+    public void Detects_Missing_ServiceEndpoint()
+    {
+        var eps = new[]
+        {
+            new ServiceEndpoint
+            {
+                ServiceEndpointId = Guid.NewGuid(),
+                Name = "MyWebhook",
+                Contract = EndpointContract.Webhook,
+                AuthType = AuthType.HttpHeader
+            }
+        };
+
+        IDiffEngine engine = new SnapshotDiffEngine();
+        var result = engine.Compare([
+            MakeSnapshot("Dev", serviceEndpoints: eps),
+            MakeSnapshot("Test")
+        ]);
+
+        var finding = Assert.Single(result.Findings, f => f.Category == FindingCategory.IntegrationEndpointDrift);
+        Assert.Contains("MyWebhook", finding.FindingId);
+    }
+
+    [Fact]
+    public void Detects_CustomConnector_Missing()
+    {
+        var connectors = new[]
+        {
+            new CustomConnector { ConnectorId = Guid.NewGuid(), Name = "MyCustomApi" }
+        };
+
+        IDiffEngine engine = new SnapshotDiffEngine();
+        var result = engine.Compare([
+            MakeSnapshot("Dev", customConnectors: connectors),
+            MakeSnapshot("Test")
+        ]);
+
+        var finding = Assert.Single(result.Findings, f => f.Category == FindingCategory.ConnectorGovernance);
+        Assert.Contains("MyCustomApi", finding.Title);
+    }
+
+    // ── Plugin drift ────────────────────────────────────────────
+
+    [Fact]
+    public void Detects_Missing_PluginAssembly()
+    {
+        var plugins = new[]
+        {
+            new PluginAssembly
+            {
+                PluginAssemblyId = Guid.NewGuid(),
+                Name = "Contoso.Plugins",
+                Version = "1.0.0.0",
+                IsolationMode = PluginIsolationMode.Sandbox,
+                SourceType = PluginSourceType.Database
+            }
+        };
+
+        IDiffEngine engine = new SnapshotDiffEngine();
+        var result = engine.Compare([
+            MakeSnapshot("Dev", pluginAssemblies: plugins),
+            MakeSnapshot("Test")
+        ]);
+
+        var finding = Assert.Single(result.Findings, f => f.FindingId.Contains("PLG-MISSING"));
+        Assert.Equal(Severity.High, finding.Severity);
+    }
+
+    [Fact]
+    public void Detects_Plugin_Version_Drift()
+    {
+        var devPlugin = new[]
+        {
+            new PluginAssembly
+            {
+                PluginAssemblyId = Guid.NewGuid(),
+                Name = "Contoso.Plugins",
+                Version = "2.0.0.0",
+                IsolationMode = PluginIsolationMode.Sandbox,
+                SourceType = PluginSourceType.Database
+            }
+        };
+        var testPlugin = new[]
+        {
+            new PluginAssembly
+            {
+                PluginAssemblyId = Guid.NewGuid(),
+                Name = "Contoso.Plugins",
+                Version = "1.0.0.0",
+                IsolationMode = PluginIsolationMode.Sandbox,
+                SourceType = PluginSourceType.Database
+            }
+        };
+
+        IDiffEngine engine = new SnapshotDiffEngine();
+        var result = engine.Compare([
+            MakeSnapshot("Dev", pluginAssemblies: devPlugin),
+            MakeSnapshot("Test", pluginAssemblies: testPlugin)
+        ]);
+
+        var finding = Assert.Single(result.Findings, f => f.FindingId.Contains("PLG-VERSION"));
+        Assert.Equal(Severity.Medium, finding.Severity);
+    }
+
+    [Fact]
+    public void Detects_SdkStep_Missing()
+    {
+        var steps = new[]
+        {
+            new SdkStep
+            {
+                StepId = Guid.NewGuid(),
+                Name = "Contoso.Plugins.OnCreate: Create of account",
+                MessageName = "Create",
+                PrimaryEntity = "account",
+                Stage = SdkStepStage.PostOperation,
+                Mode = SdkStepMode.Asynchronous,
+                IsDisabled = false
+            }
+        };
+
+        IDiffEngine engine = new SnapshotDiffEngine();
+        var result = engine.Compare([
+            MakeSnapshot("Dev", sdkSteps: steps),
+            MakeSnapshot("Test")
+        ]);
+
+        var finding = Assert.Single(result.Findings, f => f.FindingId.Contains("STEP-MISSING"));
+        Assert.Equal(Severity.High, finding.Severity);
+    }
+
+    [Fact]
+    public void Detects_SdkStep_State_Drift()
+    {
+        var devSteps = new[]
+        {
+            new SdkStep
+            {
+                StepId = Guid.NewGuid(),
+                Name = "MyStep",
+                MessageName = "Update",
+                PrimaryEntity = "contact",
+                Stage = SdkStepStage.PreOperation,
+                Mode = SdkStepMode.Synchronous,
+                IsDisabled = false
+            }
+        };
+        var testSteps = new[]
+        {
+            new SdkStep
+            {
+                StepId = Guid.NewGuid(),
+                Name = "MyStep",
+                MessageName = "Update",
+                PrimaryEntity = "contact",
+                Stage = SdkStepStage.PreOperation,
+                Mode = SdkStepMode.Synchronous,
+                IsDisabled = true
+            }
+        };
+
+        IDiffEngine engine = new SnapshotDiffEngine();
+        var result = engine.Compare([
+            MakeSnapshot("Dev", sdkSteps: devSteps),
+            MakeSnapshot("Test", sdkSteps: testSteps)
+        ]);
+
+        var finding = Assert.Single(result.Findings, f => f.FindingId.Contains("STEP-STATE"));
+        Assert.Equal(Severity.High, finding.Severity); // disabled in target
+    }
+
+    // ── Web resource drift ──────────────────────────────────────
+
+    [Fact]
+    public void Detects_Missing_WebResource()
+    {
+        var resources = new[]
+        {
+            new WebResource
+            {
+                WebResourceId = Guid.NewGuid(),
+                Name = "new_/scripts/main.js",
+                WebResourceType = WebResourceType.JScript
+            }
+        };
+
+        IDiffEngine engine = new SnapshotDiffEngine();
+        var result = engine.Compare([
+            MakeSnapshot("Dev", webResources: resources),
+            MakeSnapshot("Test")
+        ]);
+
+        var finding = Assert.Single(result.Findings, f => f.Category == FindingCategory.WebResourceDrift);
+        Assert.Equal(Severity.High, finding.Severity); // JScript → high
+    }
+
+    // ── Workflow drift ──────────────────────────────────────────
+
+    [Fact]
+    public void Detects_Missing_Workflow()
+    {
+        var flows = new[]
+        {
+            new WorkflowDefinition
+            {
+                WorkflowId = Guid.NewGuid(),
+                Name = "SendWelcomeEmail",
+                UniqueName = "SendWelcomeEmail",
+                Category = WorkflowCategory.ModernFlow,
+                Mode = WorkflowMode.Background,
+                IsActivated = true
+            }
+        };
+
+        IDiffEngine engine = new SnapshotDiffEngine();
+        var result = engine.Compare([
+            MakeSnapshot("Dev", workflows: flows),
+            MakeSnapshot("Test")
+        ]);
+
+        var finding = Assert.Single(result.Findings, f => f.Category == FindingCategory.WorkflowConfiguration);
+        Assert.Equal(Severity.High, finding.Severity); // active flow missing → high
+    }
+
+    [Fact]
+    public void Detects_Workflow_Activation_State_Drift()
+    {
+        var devFlows = new[]
+        {
+            new WorkflowDefinition
+            {
+                WorkflowId = Guid.NewGuid(),
+                Name = "ApprovalFlow",
+                UniqueName = "ApprovalFlow",
+                Category = WorkflowCategory.ModernFlow,
+                Mode = WorkflowMode.Background,
+                IsActivated = true
+            }
+        };
+        var testFlows = new[]
+        {
+            new WorkflowDefinition
+            {
+                WorkflowId = Guid.NewGuid(),
+                Name = "ApprovalFlow",
+                UniqueName = "ApprovalFlow",
+                Category = WorkflowCategory.ModernFlow,
+                Mode = WorkflowMode.Background,
+                IsActivated = false
+            }
+        };
+
+        IDiffEngine engine = new SnapshotDiffEngine();
+        var result = engine.Compare([
+            MakeSnapshot("Dev", workflows: devFlows),
+            MakeSnapshot("Test", workflows: testFlows)
+        ]);
+
+        var finding = Assert.Single(result.Findings, f => f.FindingId.Contains("WFL-STATE"));
+        Assert.Equal(Severity.High, finding.Severity); // active→inactive
+    }
+
+    // ── Environment variable drift ──────────────────────────────
+
+    [Fact]
+    public void Detects_Missing_EnvironmentVariable()
+    {
+        var vars = new[]
+        {
+            new EnvironmentVariable
+            {
+                DefinitionId = Guid.NewGuid(),
+                SchemaName = "cr_ApiBaseUrl",
+                Type = EnvironmentVariableType.String,
+                DefaultValue = "https://api.contoso.com",
+                IsRequired = true
+            }
+        };
+
+        IDiffEngine engine = new SnapshotDiffEngine();
+        var result = engine.Compare([
+            MakeSnapshot("Dev", environmentVariables: vars),
+            MakeSnapshot("Test")
+        ]);
+
+        var finding = Assert.Single(result.Findings, f => f.FindingId.Contains("ENVVAR-MISSING"));
+        Assert.Equal(Severity.High, finding.Severity); // IsRequired → high
+    }
+
+    [Fact]
+    public void Detects_EnvironmentVariable_Value_Drift()
+    {
+        var devVars = new[]
+        {
+            new EnvironmentVariable
+            {
+                DefinitionId = Guid.NewGuid(),
+                SchemaName = "cr_ApiBaseUrl",
+                Type = EnvironmentVariableType.String,
+                DefaultValue = "https://dev.contoso.com"
+            }
+        };
+        var testVars = new[]
+        {
+            new EnvironmentVariable
+            {
+                DefinitionId = Guid.NewGuid(),
+                SchemaName = "cr_ApiBaseUrl",
+                Type = EnvironmentVariableType.String,
+                DefaultValue = "https://test.contoso.com"
+            }
+        };
+
+        IDiffEngine engine = new SnapshotDiffEngine();
+        var result = engine.Compare([
+            MakeSnapshot("Dev", environmentVariables: devVars),
+            MakeSnapshot("Test", environmentVariables: testVars)
+        ]);
+
+        var finding = Assert.Single(result.Findings, f => f.FindingId.Contains("ENVVAR-VALUEDRIFT"));
+        Assert.Equal(Severity.Medium, finding.Severity);
+    }
+
+    [Fact]
+    public void Detects_Required_EnvironmentVariable_Without_Value()
+    {
+        var devVars = new[]
+        {
+            new EnvironmentVariable
+            {
+                DefinitionId = Guid.NewGuid(),
+                SchemaName = "cr_ApiKey",
+                Type = EnvironmentVariableType.String,
+                DefaultValue = "secretkey",
+                IsRequired = true
+            }
+        };
+        var testVars = new[]
+        {
+            new EnvironmentVariable
+            {
+                DefinitionId = Guid.NewGuid(),
+                SchemaName = "cr_ApiKey",
+                Type = EnvironmentVariableType.String,
+                IsRequired = true
+                // No default, no current → HasValue = false
+            }
+        };
+
+        IDiffEngine engine = new SnapshotDiffEngine();
+        var result = engine.Compare([
+            MakeSnapshot("Dev", environmentVariables: devVars),
+            MakeSnapshot("Test", environmentVariables: testVars)
+        ]);
+
+        Assert.Contains(result.Findings, f => f.FindingId.Contains("ENVVAR-NOVAL"));
+    }
+
+    // ── Business rule drift ─────────────────────────────────────
+
+    [Fact]
+    public void Detects_Missing_BusinessRule()
+    {
+        var rules = new[]
+        {
+            new BusinessRule
+            {
+                BusinessRuleId = Guid.NewGuid(),
+                Name = "SetDefaultStatus",
+                UniqueName = "SetDefaultStatus",
+                PrimaryEntity = "account",
+                Scope = BusinessRuleScope.Entity,
+                IsActivated = true
+            }
+        };
+
+        IDiffEngine engine = new SnapshotDiffEngine();
+        var result = engine.Compare([
+            MakeSnapshot("Dev", businessRules: rules),
+            MakeSnapshot("Test")
+        ]);
+
+        var finding = Assert.Single(result.Findings, f => f.Category == FindingCategory.BusinessRuleDrift);
+        Assert.Contains("SetDefaultStatus", finding.FindingId);
+        Assert.Equal(Severity.High, finding.Severity); // active rule missing
+    }
+
+    [Fact]
+    public void Detects_BusinessRule_Scope_Drift()
+    {
+        var devRules = new[]
+        {
+            new BusinessRule
+            {
+                BusinessRuleId = Guid.NewGuid(),
+                Name = "ValidateName",
+                UniqueName = "ValidateName",
+                PrimaryEntity = "contact",
+                Scope = BusinessRuleScope.Entity,
+                IsActivated = true
+            }
+        };
+        var testRules = new[]
+        {
+            new BusinessRule
+            {
+                BusinessRuleId = Guid.NewGuid(),
+                Name = "ValidateName",
+                UniqueName = "ValidateName",
+                PrimaryEntity = "contact",
+                Scope = BusinessRuleScope.AllForms,
+                IsActivated = true
+            }
+        };
+
+        IDiffEngine engine = new SnapshotDiffEngine();
+        var result = engine.Compare([
+            MakeSnapshot("Dev", businessRules: devRules),
+            MakeSnapshot("Test", businessRules: testRules)
+        ]);
+
+        var finding = Assert.Single(result.Findings, f => f.FindingId.Contains("BRL-SCOPE"));
+        Assert.Equal(Severity.Medium, finding.Severity);
+    }
+
+    // ── Single-environment analysis ─────────────────────────────
+
+    [Fact]
+    public void SingleEnv_Detects_Disabled_SdkStep()
+    {
+        var steps = new[]
+        {
+            new SdkStep
+            {
+                StepId = Guid.NewGuid(),
+                Name = "DisabledStep",
+                MessageName = "Create",
+                PrimaryEntity = "account",
+                Stage = SdkStepStage.PostOperation,
+                Mode = SdkStepMode.Asynchronous,
+                IsDisabled = true
+            }
+        };
+
+        IDiffEngine engine = new SnapshotDiffEngine();
+        var result = engine.Compare([
+            MakeSnapshot("Prod", sdkSteps: steps, envType: EnvironmentType.Prod)
+        ]);
+
+        Assert.Contains(result.Findings, f => f.FindingId.Contains("SINGLE-STEP-DISABLED"));
+    }
+
+    [Fact]
+    public void SingleEnv_Detects_Deactivated_Workflow_In_Prod()
+    {
+        var flows = new[]
+        {
+            new WorkflowDefinition
+            {
+                WorkflowId = Guid.NewGuid(),
+                Name = "InactiveFlow",
+                Category = WorkflowCategory.ModernFlow,
+                Mode = WorkflowMode.Background,
+                IsActivated = false
+            }
+        };
+
+        IDiffEngine engine = new SnapshotDiffEngine();
+        var result = engine.Compare([
+            MakeSnapshot("Prod", workflows: flows, envType: EnvironmentType.Prod)
+        ]);
+
+        Assert.Contains(result.Findings, f => f.FindingId.Contains("SINGLE-WFL-INACTIVE"));
+    }
+
+    [Fact]
+    public void SingleEnv_Skips_Deactivated_Workflow_In_Dev()
+    {
+        var flows = new[]
+        {
+            new WorkflowDefinition
+            {
+                WorkflowId = Guid.NewGuid(),
+                Name = "InactiveFlow",
+                Category = WorkflowCategory.ModernFlow,
+                Mode = WorkflowMode.Background,
+                IsActivated = false
+            }
+        };
+
+        IDiffEngine engine = new SnapshotDiffEngine();
+        var result = engine.Compare([
+            MakeSnapshot("Dev", workflows: flows, envType: EnvironmentType.Dev)
+        ]);
+
+        Assert.DoesNotContain(result.Findings, f => f.FindingId.Contains("SINGLE-WFL-INACTIVE"));
+    }
+
+    [Fact]
+    public void SingleEnv_Detects_Deactivated_BusinessRule_In_Prod()
+    {
+        var rules = new[]
+        {
+            new BusinessRule
+            {
+                BusinessRuleId = Guid.NewGuid(),
+                Name = "InactiveRule",
+                PrimaryEntity = "account",
+                Scope = BusinessRuleScope.Entity,
+                IsActivated = false
+            }
+        };
+
+        IDiffEngine engine = new SnapshotDiffEngine();
+        var result = engine.Compare([
+            MakeSnapshot("Prod", businessRules: rules, envType: EnvironmentType.Prod)
+        ]);
+
+        Assert.Contains(result.Findings, f => f.FindingId.Contains("SINGLE-BRL-INACTIVE"));
+    }
+
+    [Fact]
+    public void SingleEnv_Detects_Missing_EnvironmentVariable_Value()
+    {
+        var vars = new[]
+        {
+            new EnvironmentVariable
+            {
+                DefinitionId = Guid.NewGuid(),
+                SchemaName = "cr_EmptyRequired",
+                Type = EnvironmentVariableType.String,
+                IsRequired = true
+                // No default, no current → HasValue = false
+            }
+        };
+
+        IDiffEngine engine = new SnapshotDiffEngine();
+        var result = engine.Compare([
+            MakeSnapshot("Prod", environmentVariables: vars, envType: EnvironmentType.Prod)
+        ]);
+
+        Assert.Contains(result.Findings, f => f.FindingId.Contains("SINGLE-ENVVAR-NOVAL"));
+    }
+
+    [Fact]
+    public void SingleEnv_Detects_Orphaned_ConnectionReference()
+    {
+        var refs = new[]
+        {
+            new ConnectionReference
+            {
+                ConnectionReferenceId = Guid.NewGuid(),
+                ConnectionReferenceLogicalName = "cr_orphaned",
+                ConnectorId = "/providers/Microsoft.PowerApps/apis/shared_commondataservice"
+                // No ConnectionId → orphaned
+            }
+        };
+
+        IDiffEngine engine = new SnapshotDiffEngine();
+        var result = engine.Compare([
+            MakeSnapshot("Prod", connectionReferences: refs)
+        ]);
+
+        Assert.Contains(result.Findings, f => f.FindingId.Contains("SINGLE-CONN-ORPHAN"));
     }
 }

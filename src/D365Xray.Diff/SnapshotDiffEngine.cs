@@ -28,6 +28,12 @@ internal sealed class SnapshotDiffEngine : IDiffEngine
             findings.AddRange(LayerOverrideAnalyzer.Analyze(snapshots));
             findings.AddRange(DependencyConflictAnalyzer.Analyze(snapshots));
             findings.AddRange(SettingsDriftAnalyzer.Analyze(snapshots));
+            findings.AddRange(ConnectionDriftAnalyzer.Analyze(snapshots));
+            findings.AddRange(PluginAnalyzer.Analyze(snapshots));
+            findings.AddRange(WebResourceDriftAnalyzer.Analyze(snapshots));
+            findings.AddRange(WorkflowDriftAnalyzer.Analyze(snapshots));
+            findings.AddRange(EnvironmentVariableDriftAnalyzer.Analyze(snapshots));
+            findings.AddRange(BusinessRuleDriftAnalyzer.Analyze(snapshots));
         }
         else
         {

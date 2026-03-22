@@ -13,6 +13,15 @@ public sealed record EnvironmentSnapshot
     public IReadOnlyList<ComponentLayer> Layers { get; init; } = [];
     public IReadOnlyList<SolutionDependency> Dependencies { get; init; } = [];
     public IReadOnlyList<EnvironmentSetting> Settings { get; init; } = [];
+    public IReadOnlyList<ConnectionReference> ConnectionReferences { get; init; } = [];
+    public IReadOnlyList<ServiceEndpoint> ServiceEndpoints { get; init; } = [];
+    public IReadOnlyList<CustomConnector> CustomConnectors { get; init; } = [];
+    public IReadOnlyList<EnvironmentVariable> EnvironmentVariables { get; init; } = [];
+    public IReadOnlyList<PluginAssembly> PluginAssemblies { get; init; } = [];
+    public IReadOnlyList<SdkStep> SdkSteps { get; init; } = [];
+    public IReadOnlyList<WebResource> WebResources { get; init; } = [];
+    public IReadOnlyList<WorkflowDefinition> Workflows { get; init; } = [];
+    public IReadOnlyList<BusinessRule> BusinessRules { get; init; } = [];
 }
 
 /// <summary>
@@ -20,7 +29,7 @@ public sealed record EnvironmentSnapshot
 /// </summary>
 public sealed record SnapshotMetadata
 {
-    public const int CurrentSchemaVersion = 1;
+    public const int CurrentSchemaVersion = 2;
 
     public int SchemaVersion { get; init; } = CurrentSchemaVersion;
     public required DateTimeOffset CapturedAtUtc { get; init; }

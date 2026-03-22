@@ -4,22 +4,22 @@
 
 [![.NET 10](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet)](https://dotnet.microsoft.com/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](#license)
-[![Status](https://img.shields.io/badge/status-V1%20Sprint%201%20Complete-blue)]()
+[![Status](https://img.shields.io/badge/status-V1%20Sprint%202%20Complete-blue)]()
 
 ---
 
 ## 📋 Overview
 
-**d365-xray** is a CLI tool that connects to one or more Dataverse environments, captures read-only snapshots, compares them, scores risk based on 14 built-in rules, and exports detailed reports in JSON, Markdown, and HTML.
+**d365-xray** is a CLI tool that connects to one or more Dataverse environments, captures read-only snapshots, compares them, scores risk based on 30 built-in rules, and exports detailed reports in JSON, Markdown, and HTML.
 
 ### Key Capabilities
 
 | Feature | Description |
 |---------|-------------|
 | 🔗 **Multi-Environment Connect** | Authenticate via Azure Identity (ClientSecret, Interactive, DeviceCode, Default) |
-| 📸 **Snapshot Capture** | Solutions, components, layers, dependencies, settings, Dataverse version |
-| 🔍 **Deterministic Diff** | 5 analyzers compare snapshots and produce reproducible findings |
-| ⚠️ **Risk Scoring** | 14 rules assign risk scores; overall level: Low / Medium / High / Critical |
+| 📸 **Snapshot Capture** | Solutions, components, layers, dependencies, settings, connections, plugins, workflows, business rules, environment variables, web resources |
+| 🔍 **Deterministic Diff** | 11 analyzers compare snapshots and produce reproducible findings |
+| ⚠️ **Risk Scoring** | 30 rules assign risk scores; overall level: Low / Medium / High / Critical |
 | 🤖 **AI Enrichment (optional)** | Pluggable adapter for AI-powered analysis with provenance markers |
 | 📊 **Multi-Format Reports** | JSON (machine-readable), Markdown (docs), HTML (local viewer) |
 | 🚦 **CI/CD Exit Codes** | `0` = OK, `2` = Critical Risk, `3` = Config Error |
@@ -32,21 +32,21 @@
 d365-xray.sln
 ├── src/
 │   ├── D365Xray.Core           # Domain model, service contracts (0 NuGet deps)
-│   ├── D365Xray.Connectors     # Dataverse Web API client, auth, 5 collectors
-│   ├── D365Xray.Diff           # Snapshot diff engine, 5 analyzers
-│   ├── D365Xray.Risk           # 14 risk rules, rule engine
+│   ├── D365Xray.Connectors     # Dataverse Web API client, auth, 14 collectors
+│   ├── D365Xray.Diff           # Snapshot diff engine, 11 analyzers
+│   ├── D365Xray.Risk           # 30 risk rules, rule engine
 │   ├── D365Xray.Reporting      # JSON / Markdown / HTML exporters
 │   └── D365Xray.Cli            # System.CommandLine 2.0.5 entry point
 └── tests/
     ├── D365Xray.Core.Tests           # 13 tests
-    ├── D365Xray.Connectors.Tests     #  8 tests
-    ├── D365Xray.Diff.Tests           # 12 tests
-    ├── D365Xray.Risk.Tests           # 21 tests
+    ├── D365Xray.Connectors.Tests     # 18 tests
+    ├── D365Xray.Diff.Tests           # 34 tests
+    ├── D365Xray.Risk.Tests           # 37 tests
     ├── D365Xray.Reporting.Tests      # 16 tests
     └── D365Xray.IntegrationTests     # 10 live Dataverse integration tests
 ```
 
-**33 source files** · **80 tests** (70 unit + 10 integration) · **0 warnings**
+**48 source files** · **128 tests** (118 unit + 10 integration) · **0 warnings**
 
 ### Pipeline
 
@@ -60,6 +60,30 @@ Each step is behind a clean interface registered via IoC/DI:
 |-----------|---------------|---------|
 | `IEnvironmentConnector` | `DataverseConnector` | Capture snapshots |
 | `IDiffEngine` | `SnapshotDiffEngine` | Compare environments |
+| `IRiskScorer` | `RiskRuleEngine` | Evaluate risk |
+| `IReportExporter` | `CompositeReportExporter` | Export reports |
+| `IAiAnalysisAdapter` | `NullAiAnalysisAdapter` | AI enrichment (no-op default) |
+
+### Analysis Domains
+
+d365-xray captures and analyzes the following Dataverse artifacts:
+
+| Domain | Collector | Cross-Env Analyzer | Single-Env Checks |
+|--------|-----------|--------------------|--------------------|
+| Solutions | `SolutionCollector` | `SolutionDriftAnalyzer` | Unmanaged solutions, duplicate prefixes |
+| Components | `ComponentCollector` | `MissingComponentAnalyzer` | — |
+| Layers | `LayerCollector` | `LayerOverrideAnalyzer` | Active layer overrides |
+| Dependencies | `DependencyCollector` | `DependencyConflictAnalyzer` | Missing required dependencies |
+| Settings | `SettingsCollector` | `SettingsDriftAnalyzer` | — |
+| Connection References | `ConnectionReferenceCollector` | `ConnectionDriftAnalyzer` | Orphaned (no connection bound) |
+| Service Endpoints | `ServiceEndpointCollector` | `ConnectionDriftAnalyzer` | — |
+| Custom Connectors | `CustomConnectorCollector` | `ConnectionDriftAnalyzer` | — |
+| Plugins | `PluginAssemblyCollector` | `PluginAnalyzer` | — |
+| SDK Steps | `SdkStepCollector` | `PluginAnalyzer` | Disabled steps |
+| Web Resources | `WebResourceCollector` | `WebResourceDriftAnalyzer` | — |
+| Workflows / Flows | `WorkflowCollector` | `WorkflowDriftAnalyzer` | Deactivated in production |
+| Business Rules | `BusinessRuleCollector` | `BusinessRuleDriftAnalyzer` | Deactivated in production |
+| Environment Variables | `EnvironmentVariableCollector` | `EnvironmentVariableDriftAnalyzer` | Required vars without value |
 | `IRiskScorer` | `RiskRuleEngine` | Evaluate risk |
 | `IReportExporter` | `CompositeReportExporter` | Export reports |
 | `IAiAnalysisAdapter` | `NullAiAnalysisAdapter` | AI enrichment (no-op default) |
@@ -272,16 +296,16 @@ d365-xray/
 │   ├── D365Xray.Core/
 │   │   ├── ServiceContracts.cs     # 5 interfaces
 │   │   ├── NullAiAnalysisAdapter.cs
-│   │   └── Model/                  # 9 domain model records
+│   │   └── Model/                  # 18 domain model records
 │   ├── D365Xray.Connectors/
 │   │   ├── DataverseClient.cs      # Web API v9.2, 429 retry, OData paging
 │   │   ├── CredentialFactory.cs    # AuthMethod → TokenCredential mapping
 │   │   ├── DataverseConnector.cs   # Snapshot orchestrator
-│   │   └── Collectors/             # Solution, Component, Layer, Dependency, Settings
+│   │   └── Collectors/             # 14 collectors (solutions, plugins, workflows, etc.)
 │   ├── D365Xray.Diff/
-│   │   └── 5 analyzers + SnapshotDiffEngine
+│   │   └── 11 analyzers + SnapshotDiffEngine + SingleEnvironmentAnalyzer
 │   ├── D365Xray.Risk/
-│   │   └── 14 rules + RiskRuleEngine
+│   │   └── 30 rules + RiskRuleEngine
 │   ├── D365Xray.Reporting/
 │   │   └── JSON, Markdown, HTML exporters
 │   └── D365Xray.Cli/
@@ -289,7 +313,7 @@ d365-xray/
 │       ├── ScanCommand.cs          # 6-step pipeline orchestration
 │       └── ExitCodes.cs
 └── tests/
-    └── 6 test projects (80 tests total)
+    └── 6 test projects (128 tests total)
 ```
 
 ---
