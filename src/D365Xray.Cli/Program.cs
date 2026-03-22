@@ -51,6 +51,12 @@ var outputOption = new Option<string>("--output", ["-o"])
     DefaultValueFactory = _ => "./output"
 };
 
+var typeOption = new Option<string[]>("--type", ["-t"])
+{
+    Description = "Environment type for each environment (same order as --env). Valid: Dev, Test, Staging, Prod. Auto-detected from --name if omitted.",
+    AllowMultipleArgumentsPerToken = true
+};
+
 var aiInstructionsOption = new Option<string?>("--ai-instructions")
 {
     Description = "Path to a Markdown file with custom AI instructions. Enables optional AI enrichment."
@@ -61,6 +67,7 @@ var scanCommand = new Command("scan", "Scan and compare Dataverse environments."
 {
     envOption,
     nameOption,
+    typeOption,
     authOption,
     tenantOption,
     clientIdOption,
@@ -73,6 +80,7 @@ scanCommand.SetAction(async (ParseResult parseResult, CancellationToken ct) =>
 {
     var envUrls = parseResult.GetValue(envOption) ?? [];
     var names = parseResult.GetValue(nameOption) ?? [];
+    var types = parseResult.GetValue(typeOption) ?? [];
     var auth = parseResult.GetValue(authOption) ?? "Default";
     var tenantId = parseResult.GetValue(tenantOption);
     var clientId = parseResult.GetValue(clientIdOption);
@@ -104,6 +112,18 @@ scanCommand.SetAction(async (ParseResult parseResult, CancellationToken ct) =>
         }
 
         var displayName = i < names.Length ? names[i] : $"Env{i + 1}";
+
+        // Resolve environment type: explicit --type > inferred from --name > Unknown
+        EnvironmentType envType;
+        if (i < types.Length && Enum.TryParse<EnvironmentType>(types[i], ignoreCase: true, out var parsedType))
+        {
+            envType = parsedType;
+        }
+        else
+        {
+            envType = InferEnvironmentType(displayName);
+        }
+
         var config = new DataverseConnectionConfig
         {
             EnvironmentUrl = uri,
@@ -114,7 +134,7 @@ scanCommand.SetAction(async (ParseResult parseResult, CancellationToken ct) =>
             ClientSecret = secret
         };
 
-        envArgs.Add(new ScanEnvironmentArg { Config = config });
+        envArgs.Add(new ScanEnvironmentArg { Config = config, EnvironmentType = envType });
     }
 
     // Build host with DI
@@ -164,3 +184,41 @@ var rootCommand = new RootCommand("d365-xray – Deep analysis & comparison tool
 
 var configuration = new InvocationConfiguration();
 return await rootCommand.Parse(args).InvokeAsync(configuration);
+
+// ── Helpers ─────────────────────────────────────────────────
+
+/// <summary>
+/// Infers the environment type from the display name.
+/// Matches common naming patterns like "Dev", "Development", "TEST", "Staging", "UAT", "Prod", "Production".
+/// </summary>
+static EnvironmentType InferEnvironmentType(string displayName)
+{
+    var normalized = displayName.Trim();
+
+    if (normalized.Contains("prod", StringComparison.OrdinalIgnoreCase) ||
+        normalized.Contains("live", StringComparison.OrdinalIgnoreCase))
+    {
+        return EnvironmentType.Prod;
+    }
+
+    if (normalized.Contains("staging", StringComparison.OrdinalIgnoreCase) ||
+        normalized.Contains("uat", StringComparison.OrdinalIgnoreCase) ||
+        normalized.Contains("preprod", StringComparison.OrdinalIgnoreCase))
+    {
+        return EnvironmentType.Staging;
+    }
+
+    if (normalized.Contains("test", StringComparison.OrdinalIgnoreCase) ||
+        normalized.Contains("qa", StringComparison.OrdinalIgnoreCase))
+    {
+        return EnvironmentType.Test;
+    }
+
+    if (normalized.Contains("dev", StringComparison.OrdinalIgnoreCase) ||
+        normalized.Contains("sandbox", StringComparison.OrdinalIgnoreCase))
+    {
+        return EnvironmentType.Dev;
+    }
+
+    return EnvironmentType.Unknown;
+}

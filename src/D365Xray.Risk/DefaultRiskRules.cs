@@ -146,10 +146,19 @@ public static class DefaultRiskRules
         {
             RuleId = "R-CFG-001",
             Category = FindingCategory.ConfigurationAnomaly,
-            MinimumSeverity = null,
+            MinimumSeverity = Severity.Medium,
             BaseScore = 40,
-            Description = "An unusual configuration has been detected. " +
+            Description = "An unusual configuration has been detected in a production-like environment. " +
                 "This may be intentional but warrants review."
+        },
+        new RiskRule
+        {
+            RuleId = "R-CFG-002",
+            Category = FindingCategory.ConfigurationAnomaly,
+            MinimumSeverity = null,
+            BaseScore = 5,
+            Description = "An informational configuration note. " +
+                "Expected in development environments — no action required."
         }
     ];
 }

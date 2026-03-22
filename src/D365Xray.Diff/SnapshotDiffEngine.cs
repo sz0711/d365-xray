@@ -13,18 +13,27 @@ internal sealed class SnapshotDiffEngine : IDiffEngine
     public ComparisonResult Compare(IReadOnlyList<EnvironmentSnapshot> snapshots)
     {
         ArgumentNullException.ThrowIfNull(snapshots);
-        if (snapshots.Count < 2)
+        if (snapshots.Count == 0)
         {
-            throw new ArgumentException("At least two snapshots are required for comparison.", nameof(snapshots));
+            throw new ArgumentException("At least one snapshot is required.", nameof(snapshots));
         }
 
         var findings = new List<Finding>();
 
-        findings.AddRange(SolutionDriftAnalyzer.Analyze(snapshots));
-        findings.AddRange(MissingComponentAnalyzer.Analyze(snapshots));
-        findings.AddRange(LayerOverrideAnalyzer.Analyze(snapshots));
-        findings.AddRange(DependencyConflictAnalyzer.Analyze(snapshots));
-        findings.AddRange(SettingsDriftAnalyzer.Analyze(snapshots));
+        if (snapshots.Count >= 2)
+        {
+            // Cross-environment comparison mode
+            findings.AddRange(SolutionDriftAnalyzer.Analyze(snapshots));
+            findings.AddRange(MissingComponentAnalyzer.Analyze(snapshots));
+            findings.AddRange(LayerOverrideAnalyzer.Analyze(snapshots));
+            findings.AddRange(DependencyConflictAnalyzer.Analyze(snapshots));
+            findings.AddRange(SettingsDriftAnalyzer.Analyze(snapshots));
+        }
+        else
+        {
+            // Single-environment self-analysis mode
+            findings.AddRange(SingleEnvironmentAnalyzer.Analyze(snapshots[0]));
+        }
 
         // Deterministic ordering: sort by FindingId so output is stable across runs
         findings.Sort((a, b) => string.Compare(a.FindingId, b.FindingId, StringComparison.Ordinal));

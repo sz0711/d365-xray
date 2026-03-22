@@ -44,6 +44,10 @@ public static class ServiceCollectionExtensions
             return new DataverseClient(httpClient, config.EnvironmentUrl, logger);
         });
 
+        // Also register as non-keyed so DataverseConnector can resolve it (last env wins for V1)
+        services.AddSingleton<IDataverseClient>(sp =>
+            sp.GetRequiredKeyedService<IDataverseClient>(config.DisplayName));
+
         return services;
     }
 }

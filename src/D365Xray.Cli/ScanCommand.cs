@@ -58,7 +58,8 @@ internal sealed class ScanCommand
             {
                 EnvironmentId = envArg.Config.DisplayName.ToLowerInvariant(),
                 DisplayName = envArg.Config.DisplayName,
-                EnvironmentUrl = envArg.Config.EnvironmentUrl
+                EnvironmentUrl = envArg.Config.EnvironmentUrl,
+                EnvironmentType = envArg.EnvironmentType
             };
 
             var snapshot = await connector.CaptureSnapshotAsync(envInfo, cancellationToken);
@@ -124,4 +125,5 @@ internal sealed class ScanCommand
 internal sealed record ScanEnvironmentArg
 {
     public required DataverseConnectionConfig Config { get; init; }
+    public EnvironmentType EnvironmentType { get; init; } = EnvironmentType.Unknown;
 }

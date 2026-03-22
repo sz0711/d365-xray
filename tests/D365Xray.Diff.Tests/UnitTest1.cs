@@ -44,12 +44,13 @@ public class SnapshotDiffEngineTests
     // ── Basic contract ──────────────────────────────────────────
 
     [Fact]
-    public void Compare_RequiresAtLeastTwoSnapshots()
+    public void Compare_SingleSnapshot_RunsSingleEnvironmentAnalysis()
     {
         IDiffEngine engine = new SnapshotDiffEngine();
-        var single = new[] { MakeSnapshot("Dev") };
+        var result = engine.Compare([MakeSnapshot("Dev")]);
 
-        Assert.Throws<ArgumentException>(() => engine.Compare(single));
+        Assert.Single(result.ComparedEnvironments);
+        Assert.Equal("Dev", result.ComparedEnvironments[0].DisplayName);
     }
 
     [Fact]

@@ -88,17 +88,31 @@ dotnet test d365-xray.sln --filter "Category!=Integration"
 
 ### CLI Usage
 
+> **Important:** The `--name` parameter controls the display name shown in the report header
+> (*"Compared Environments"*). Make sure it matches the actual environment type (Dev, Test, Staging, Prod, …).
+> If omitted, environments are auto-named `Env1`, `Env2`, etc.
+
 ```bash
-# Single environment scan (Interactive auth)
+# ── Single Dev environment – self-analysis ───────────────────
 dotnet run --project src/D365Xray.Cli -- scan \
-  --env https://myorg.crm4.dynamics.com \
+  --env https://orgXXXXXX.crm4.dynamics.com \
+  --name Dev \
+  --auth ClientSecret \
+  --tenant-id <TENANT_ID> \
+  --client-id <APP_ID> \
+  --client-secret <SECRET>
+
+# ── Single Prod environment – Interactive browser auth ───────
+dotnet run --project src/D365Xray.Cli -- scan \
+  --env https://orgYYYYYY.crm4.dynamics.com \
   --name Production \
   --auth Interactive \
   --client-id <APP_ID>
 
-# Two-environment comparison (ClientSecret)
+# ── Two-environment comparison (Dev vs Prod) ─────────────────
+# The first --name maps to the first --env URL, the second to the second, etc.
 dotnet run --project src/D365Xray.Cli -- scan \
-  --env https://dev.crm4.dynamics.com https://prod.crm4.dynamics.com \
+  --env https://orgXXXXXX.crm4.dynamics.com https://orgYYYYYY.crm4.dynamics.com \
   --name Dev Prod \
   --auth ClientSecret \
   --tenant-id <TENANT_ID> \
@@ -106,11 +120,45 @@ dotnet run --project src/D365Xray.Cli -- scan \
   --client-secret <SECRET> \
   --output ./reports
 
-# With AI enrichment
+# ── Three-environment comparison (Dev → Test → Prod) ─────────
 dotnet run --project src/D365Xray.Cli -- scan \
-  --env https://myorg.crm4.dynamics.com \
+  --env https://dev.crm4.dynamics.com https://test.crm4.dynamics.com https://prod.crm4.dynamics.com \
+  --name Dev Test Prod \
+  --auth ClientSecret \
+  --tenant-id <TENANT_ID> \
+  --client-id <APP_ID> \
+  --client-secret <SECRET> \
+  --output ./reports
+
+# ── DefaultAzureCredential (auto-detect: env vars → MI → VS/CLI → browser)
+dotnet run --project src/D365Xray.Cli -- scan \
+  --env https://orgXXXXXX.crm4.dynamics.com \
+  --name Staging \
+  --auth Default
+
+# ── DeviceCode auth (headless / SSH sessions) ────────────────
+dotnet run --project src/D365Xray.Cli -- scan \
+  --env https://orgXXXXXX.crm4.dynamics.com \
+  --name Dev \
+  --auth DeviceCode \
+  --client-id <APP_ID>
+
+# ── With optional AI enrichment ──────────────────────────────
+dotnet run --project src/D365Xray.Cli -- scan \
+  --env https://orgXXXXXX.crm4.dynamics.com \
+  --name Dev \
   --auth Default \
   --ai-instructions ./prompts/analysis.md
+
+# ── Custom output directory ──────────────────────────────────
+dotnet run --project src/D365Xray.Cli -- scan \
+  --env https://orgXXXXXX.crm4.dynamics.com \
+  --name Dev \
+  --auth ClientSecret \
+  --tenant-id <TENANT_ID> \
+  --client-id <APP_ID> \
+  --client-secret <SECRET> \
+  --output ./my-reports/2026-03-22
 ```
 
 ### CLI Options
