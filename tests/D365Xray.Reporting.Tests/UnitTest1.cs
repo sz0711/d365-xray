@@ -376,4 +376,85 @@ public class ReportExporterTests : IDisposable
         Assert.True(File.Exists(Path.Combine(_outputDir, "report.md")));
         Assert.True(File.Exists(Path.Combine(_outputDir, "report.html")));
     }
+
+    [Fact]
+    public async Task DemoReport_GeneratesAllFormats_WithNonEmptyContent()
+    {
+        var workflowId = Guid.NewGuid();
+        var findings = new List<Finding>
+        {
+            MakeFinding(
+                "DEMO-001",
+                FindingCategory.WorkflowConfiguration,
+                Severity.Critical,
+                95,
+                new Dictionary<string, string>
+                {
+                    ["EnvironmentUrl"] = "https://prod.crm.dynamics.com",
+                    ["WorkflowId"] = workflowId.ToString(),
+                    ["State"] = "Inactive"
+                },
+                "R-WFL-001"),
+            MakeFinding(
+                "DEMO-002",
+                FindingCategory.DependencyConflict,
+                Severity.High,
+                78,
+                new Dictionary<string, string>
+                {
+                    ["EnvironmentUrl"] = "https://dev.crm.dynamics.com",
+                    ["SolutionId"] = Guid.NewGuid().ToString(),
+                    ["DependencyType"] = "MissingReference"
+                },
+                "R-DEP-001")
+        };
+
+        var ai = new AiEnrichmentResult
+        {
+            Summary = "Demo AI summary for report preview.",
+            Provenance = new AiProvenance
+            {
+                GeneratedAtUtc = DateTimeOffset.UtcNow,
+                AdapterName = "demo-adapter",
+                ModelIdentifier = "demo-model"
+            },
+            FindingAnnotations = new Dictionary<string, FindingAnnotation>
+            {
+                ["DEMO-001"] = new FindingAnnotation
+                {
+                    Commentary = "Reactivate flow and validate trigger registration.",
+                    SuggestedActions = ["Check owner", "Re-enable and test"]
+                }
+            }
+        };
+
+        var report = MakeReport(findings: findings, ai: ai);
+        var outputDir = Path.Combine(_outputDir, "demo-report");
+
+        var exporter = new CompositeReportExporter(
+            new JsonReportExporter(),
+            new MarkdownReportExporter(),
+            new HtmlReportExporter());
+
+        await exporter.ExportAsync(report, outputDir);
+
+        var jsonPath = Path.Combine(outputDir, "report.json");
+        var mdPath = Path.Combine(outputDir, "report.md");
+        var htmlPath = Path.Combine(outputDir, "report.html");
+
+        Assert.True(File.Exists(jsonPath));
+        Assert.True(File.Exists(mdPath));
+        Assert.True(File.Exists(htmlPath));
+
+        var json = await File.ReadAllTextAsync(jsonPath);
+        var markdown = await File.ReadAllTextAsync(mdPath);
+        var html = await File.ReadAllTextAsync(htmlPath);
+
+        Assert.Contains("DEMO-001", json);
+        Assert.Contains("Environment Inventory", markdown);
+        Assert.Contains("D365 X-Ray Risk Report", html);
+        Assert.True(json.Length > 100);
+        Assert.True(markdown.Length > 100);
+        Assert.True(html.Length > 1000);
+    }
 }
