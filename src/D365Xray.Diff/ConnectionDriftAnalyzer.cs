@@ -56,8 +56,10 @@ internal static class ConnectionDriftAnalyzer
                         Details = new Dictionary<string, string>
                         {
                             ["ConnectionReferenceLogicalName"] = key,
+                            ["ConnectionReferenceId"] = baseRef.ConnectionReferenceId.ToString(),
                             ["ConnectorId"] = baseRef.ConnectorId ?? "(null)",
-                            ["BaselineEnvironment"] = baseline.Environment.DisplayName
+                            ["BaselineEnvironment"] = baseline.Environment.DisplayName,
+                            ["EnvironmentUrl"] = baseline.Environment.EnvironmentUrl.ToString()
                         }
                     };
                     continue;
@@ -79,8 +81,10 @@ internal static class ConnectionDriftAnalyzer
                         Details = new Dictionary<string, string>
                         {
                             ["ConnectionReferenceLogicalName"] = key,
+                            ["ConnectionReferenceId"] = baseRef.ConnectionReferenceId.ToString(),
                             ["BaselineConnectorId"] = baseRef.ConnectorId ?? "(null)",
-                            ["TargetConnectorId"] = targetRef.ConnectorId ?? "(null)"
+                            ["TargetConnectorId"] = targetRef.ConnectorId ?? "(null)",
+                            ["EnvironmentUrl"] = baseline.Environment.EnvironmentUrl.ToString()
                         }
                     };
                 }
@@ -117,8 +121,10 @@ internal static class ConnectionDriftAnalyzer
                         Details = new Dictionary<string, string>
                         {
                             ["EndpointName"] = name,
+                            ["ServiceEndpointId"] = baseEp.ServiceEndpointId.ToString(),
                             ["Contract"] = baseEp.Contract.ToString(),
-                            ["BaselineEnvironment"] = baseline.Environment.DisplayName
+                            ["BaselineEnvironment"] = baseline.Environment.DisplayName,
+                            ["EnvironmentUrl"] = baseline.Environment.EnvironmentUrl.ToString()
                         }
                     };
                     continue;
@@ -139,8 +145,10 @@ internal static class ConnectionDriftAnalyzer
                         Details = new Dictionary<string, string>
                         {
                             ["EndpointName"] = name,
+                            ["ServiceEndpointId"] = baseEp.ServiceEndpointId.ToString(),
                             ["BaselineContract"] = baseEp.Contract.ToString(),
-                            ["TargetContract"] = targetEp.Contract.ToString()
+                            ["TargetContract"] = targetEp.Contract.ToString(),
+                            ["EnvironmentUrl"] = baseline.Environment.EnvironmentUrl.ToString()
                         }
                     };
                 }
@@ -160,8 +168,10 @@ internal static class ConnectionDriftAnalyzer
                         Details = new Dictionary<string, string>
                         {
                             ["EndpointName"] = name,
+                            ["ServiceEndpointId"] = baseEp.ServiceEndpointId.ToString(),
                             ["BaselineAuthType"] = baseEp.AuthType.ToString(),
-                            ["TargetAuthType"] = targetEp.AuthType.ToString()
+                            ["TargetAuthType"] = targetEp.AuthType.ToString(),
+                            ["EnvironmentUrl"] = baseline.Environment.EnvironmentUrl.ToString()
                         }
                     };
                 }
@@ -182,7 +192,7 @@ internal static class ConnectionDriftAnalyzer
             var targetConnectors = target.CustomConnectors
                 .ToDictionary(c => c.Name, StringComparer.OrdinalIgnoreCase);
 
-            foreach (var (name, _) in baselineConnectors.OrderBy(k => k.Key, StringComparer.OrdinalIgnoreCase))
+            foreach (var (name, baseCon) in baselineConnectors.OrderBy(k => k.Key, StringComparer.OrdinalIgnoreCase))
             {
                 if (!targetConnectors.ContainsKey(name))
                 {
@@ -198,14 +208,16 @@ internal static class ConnectionDriftAnalyzer
                         Details = new Dictionary<string, string>
                         {
                             ["ConnectorName"] = name,
-                            ["BaselineEnvironment"] = baseline.Environment.DisplayName
+                            ["ConnectorId"] = baseCon.ConnectorId.ToString(),
+                            ["BaselineEnvironment"] = baseline.Environment.DisplayName,
+                            ["EnvironmentUrl"] = baseline.Environment.EnvironmentUrl.ToString()
                         }
                     };
                 }
             }
 
             // Connectors in target but not in baseline (governance: extra connectors)
-            foreach (var (name, _) in targetConnectors.OrderBy(k => k.Key, StringComparer.OrdinalIgnoreCase))
+            foreach (var (name, targetCon) in targetConnectors.OrderBy(k => k.Key, StringComparer.OrdinalIgnoreCase))
             {
                 if (!baselineConnectors.ContainsKey(name))
                 {
@@ -222,7 +234,9 @@ internal static class ConnectionDriftAnalyzer
                         Details = new Dictionary<string, string>
                         {
                             ["ConnectorName"] = name,
-                            ["TargetEnvironment"] = target.Environment.DisplayName
+                            ["ConnectorId"] = targetCon.ConnectorId.ToString(),
+                            ["TargetEnvironment"] = target.Environment.DisplayName,
+                            ["EnvironmentUrl"] = target.Environment.EnvironmentUrl.ToString()
                         }
                     };
                 }

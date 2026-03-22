@@ -40,7 +40,8 @@ internal static class SettingsDriftAnalyzer
                             ["SettingKey"] = key,
                             ["Category"] = baselineSetting.Category,
                             ["BaselineValue"] = baselineSetting.Value ?? "(null)",
-                            ["BaselineEnvironment"] = baseline.Environment.DisplayName
+                            ["BaselineEnvironment"] = baseline.Environment.DisplayName,
+                            ["EnvironmentUrl"] = baseline.Environment.EnvironmentUrl.ToString()
                         }
                     };
                     continue;
@@ -66,7 +67,8 @@ internal static class SettingsDriftAnalyzer
                             ["BaselineValue"] = baselineSetting.Value ?? "(null)",
                             ["TargetValue"] = targetSetting.Value ?? "(null)",
                             ["BaselineEnvironment"] = baseline.Environment.DisplayName,
-                            ["TargetEnvironment"] = target.Environment.DisplayName
+                            ["TargetEnvironment"] = target.Environment.DisplayName,
+                            ["EnvironmentUrl"] = baseline.Environment.EnvironmentUrl.ToString()
                         }
                     };
                 }

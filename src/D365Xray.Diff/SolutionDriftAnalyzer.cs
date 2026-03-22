@@ -56,8 +56,10 @@ internal static class SolutionDriftAnalyzer
                     Details = new Dictionary<string, string>
                     {
                         ["SolutionUniqueName"] = solutionName,
+                        ["SolutionId"] = referenceSol.SolutionId.ToString(),
                         ["IsManaged"] = referenceSol.IsManaged.ToString(),
-                        ["ReferenceVersion"] = referenceSol.Version
+                        ["ReferenceVersion"] = referenceSol.Version,
+                        ["EnvironmentUrl"] = present[0].Snapshot.Environment.EnvironmentUrl.ToString()
                     }
                 };
             }
@@ -88,7 +90,8 @@ internal static class SolutionDriftAnalyzer
                         Details = new Dictionary<string, string>
                         {
                             ["SolutionUniqueName"] = solutionName,
-                            ["Versions"] = string.Join(" | ", distinctVersions)
+                            ["Versions"] = string.Join(" | ", distinctVersions),
+                            ["EnvironmentUrl"] = present[0].Snapshot.Environment.EnvironmentUrl.ToString()
                         }
                     };
                 }

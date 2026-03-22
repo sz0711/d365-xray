@@ -21,7 +21,7 @@
 | 🔍 **Deterministic Diff** | 11 analyzers compare snapshots and produce reproducible findings |
 | ⚠️ **Risk Scoring** | 30 rules assign risk scores; overall level: Low / Medium / High / Critical |
 | 🤖 **AI Enrichment (optional)** | Pluggable adapter for AI-powered analysis with provenance markers |
-| 📊 **Multi-Format Reports** | JSON (machine-readable), Markdown (docs), HTML (local viewer) |
+| 📊 **Multi-Format Reports** | JSON (machine-readable), Markdown (docs), HTML dashboard (charts, dark mode, deep links, inventory) |
 | 🚦 **CI/CD Exit Codes** | `0` = OK, `2` = Critical Risk, `3` = Config Error |
 
 ---
@@ -263,9 +263,9 @@ Reports are written to the `--output` directory:
 
 | File | Format | Description |
 |------|--------|-------------|
-| `risk-report.json` | JSON | Machine-readable, full data |
-| `risk-report.md` | Markdown | Human-readable documentation |
-| `risk-report.html` | HTML | Standalone local viewer with styling |
+| `report.json` | JSON | Machine-readable, full data including `environmentSummaries` |
+| `report.md` | Markdown | Human-readable documentation with inventory and finding details |
+| `report.html` | HTML | Standalone dashboard with charts, dark mode toggle, deep links, and AI callouts |
 
 ---
 

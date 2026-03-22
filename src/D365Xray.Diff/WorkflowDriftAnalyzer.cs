@@ -35,9 +35,11 @@ internal static class WorkflowDriftAnalyzer
                         Details = new Dictionary<string, string>
                         {
                             ["WorkflowName"] = baseFlow.Name,
+                            ["WorkflowId"] = baseFlow.WorkflowId.ToString(),
                             ["Category"] = baseFlow.Category.ToString(),
                             ["BaselineActivated"] = baseFlow.IsActivated.ToString(),
-                            ["BaselineEnvironment"] = baseline.Environment.DisplayName
+                            ["BaselineEnvironment"] = baseline.Environment.DisplayName,
+                            ["EnvironmentUrl"] = baseline.Environment.EnvironmentUrl.ToString()
                         }
                     };
                     continue;
@@ -61,8 +63,10 @@ internal static class WorkflowDriftAnalyzer
                         Details = new Dictionary<string, string>
                         {
                             ["WorkflowName"] = baseFlow.Name,
+                            ["WorkflowId"] = baseFlow.WorkflowId.ToString(),
                             ["BaselineActivated"] = baseFlow.IsActivated.ToString(),
-                            ["TargetActivated"] = targetFlow.IsActivated.ToString()
+                            ["TargetActivated"] = targetFlow.IsActivated.ToString(),
+                            ["EnvironmentUrl"] = baseline.Environment.EnvironmentUrl.ToString()
                         }
                     };
                 }
@@ -83,8 +87,10 @@ internal static class WorkflowDriftAnalyzer
                         Details = new Dictionary<string, string>
                         {
                             ["WorkflowName"] = baseFlow.Name,
+                            ["WorkflowId"] = baseFlow.WorkflowId.ToString(),
                             ["BaselineMode"] = baseFlow.Mode.ToString(),
-                            ["TargetMode"] = targetFlow.Mode.ToString()
+                            ["TargetMode"] = targetFlow.Mode.ToString(),
+                            ["EnvironmentUrl"] = baseline.Environment.EnvironmentUrl.ToString()
                         }
                     };
                 }
@@ -106,10 +112,12 @@ internal static class WorkflowDriftAnalyzer
                         Details = new Dictionary<string, string>
                         {
                             ["WorkflowName"] = baseFlow.Name,
+                            ["WorkflowId"] = baseFlow.WorkflowId.ToString(),
                             ["BaselineTriggerCreate"] = baseFlow.TriggerOnCreate ?? "(null)",
                             ["TargetTriggerCreate"] = targetFlow.TriggerOnCreate ?? "(null)",
                             ["BaselineTriggerUpdate"] = baseFlow.TriggerOnUpdate ?? "(null)",
-                            ["TargetTriggerUpdate"] = targetFlow.TriggerOnUpdate ?? "(null)"
+                            ["TargetTriggerUpdate"] = targetFlow.TriggerOnUpdate ?? "(null)",
+                            ["EnvironmentUrl"] = baseline.Environment.EnvironmentUrl.ToString()
                         }
                     };
                 }

@@ -78,6 +78,27 @@ internal sealed class ScanCommand
         _logger.LogInformation("Evaluating risk...");
         var riskScorer = _services.GetRequiredService<IRiskScorer>();
         var riskReport = riskScorer.Evaluate(comparison);
+
+        // Build environment summaries from captured snapshots
+        var summaries = snapshots.Select(s => new EnvironmentSummary
+        {
+            EnvironmentDisplayName = s.Environment.DisplayName,
+            EnvironmentUrl = s.Environment.EnvironmentUrl,
+            EnvironmentType = s.Environment.EnvironmentType,
+            Solutions = s.Solutions.Count,
+            Components = s.Components.Count,
+            Workflows = s.Workflows.Count,
+            PluginAssemblies = s.PluginAssemblies.Count,
+            SdkSteps = s.SdkSteps.Count,
+            WebResources = s.WebResources.Count,
+            ConnectionReferences = s.ConnectionReferences.Count,
+            EnvironmentVariables = s.EnvironmentVariables.Count,
+            BusinessRules = s.BusinessRules.Count,
+            CustomConnectors = s.CustomConnectors.Count,
+            ServiceEndpoints = s.ServiceEndpoints.Count
+        }).ToList();
+        riskReport = riskReport with { EnvironmentSummaries = summaries };
+
         _logger.LogInformation(
             "Risk assessment: {Level} (score {Score}/100).",
             riskReport.OverallRiskLevel,

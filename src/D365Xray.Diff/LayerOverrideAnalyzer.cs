@@ -55,7 +55,8 @@ internal static class LayerOverrideAnalyzer
                             ["ComponentType"] = group.Key.ComponentType.ToString(),
                             ["ManagedLayerCount"] = managedLayers.Count.ToString(),
                             ["TopManagedSolution"] = topManaged.SolutionUniqueName,
-                            ["TotalLayerCount"] = layers.Count.ToString()
+                            ["TotalLayerCount"] = layers.Count.ToString(),
+                            ["EnvironmentUrl"] = snapshot.Environment.EnvironmentUrl.ToString()
                         }
                     };
                 }

@@ -30,6 +30,11 @@ public sealed record RiskReport
         new Dictionary<Severity, int>();
 
     /// <summary>
+    /// Per-environment inventory counts for report dashboards.
+    /// </summary>
+    public IReadOnlyList<EnvironmentSummary> EnvironmentSummaries { get; init; } = [];
+
+    /// <summary>
     /// Optional AI-generated enrichment. Null when AI was not invoked.
     /// When present, always carries explicit <see cref="AiProvenance"/>.
     /// </summary>

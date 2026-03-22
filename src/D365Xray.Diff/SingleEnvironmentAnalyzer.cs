@@ -103,9 +103,11 @@ internal static class SingleEnvironmentAnalyzer
                 Details = new Dictionary<string, string>
                 {
                     ["SolutionUniqueName"] = sol.UniqueName,
+                    ["SolutionId"] = sol.SolutionId.ToString(),
                     ["Version"] = sol.Version,
                     ["Publisher"] = sol.Publisher.UniqueName,
-                    ["EnvironmentType"] = envLabel
+                    ["EnvironmentType"] = envLabel,
+                    ["EnvironmentUrl"] = snapshot.Environment.EnvironmentUrl.ToString()
                 }
             };
         }
@@ -157,7 +159,8 @@ internal static class SingleEnvironmentAnalyzer
                 Details = new Dictionary<string, string>
                 {
                     ["Prefix"] = group.Key,
-                    ["Publishers"] = string.Join(", ", publishers)
+                    ["Publishers"] = string.Join(", ", publishers),
+                    ["EnvironmentUrl"] = snapshot.Environment.EnvironmentUrl.ToString()
                 }
             };
         }
@@ -184,8 +187,10 @@ internal static class SingleEnvironmentAnalyzer
                 Details = new Dictionary<string, string>
                 {
                     ["StepName"] = step.Name,
+                    ["StepId"] = step.StepId.ToString(),
                     ["Message"] = step.MessageName ?? "(null)",
-                    ["Entity"] = step.PrimaryEntity ?? "(null)"
+                    ["Entity"] = step.PrimaryEntity ?? "(null)",
+                    ["EnvironmentUrl"] = snapshot.Environment.EnvironmentUrl.ToString()
                 }
             };
         }
@@ -216,7 +221,9 @@ internal static class SingleEnvironmentAnalyzer
                 Details = new Dictionary<string, string>
                 {
                     ["WorkflowName"] = wf.Name,
-                    ["Category"] = wf.Category.ToString()
+                    ["WorkflowId"] = wf.WorkflowId.ToString(),
+                    ["Category"] = wf.Category.ToString(),
+                    ["EnvironmentUrl"] = snapshot.Environment.EnvironmentUrl.ToString()
                 }
             };
         }
@@ -247,7 +254,9 @@ internal static class SingleEnvironmentAnalyzer
                 Details = new Dictionary<string, string>
                 {
                     ["RuleName"] = rule.Name,
-                    ["Entity"] = rule.PrimaryEntity
+                    ["BusinessRuleId"] = rule.BusinessRuleId.ToString(),
+                    ["Entity"] = rule.PrimaryEntity,
+                    ["EnvironmentUrl"] = snapshot.Environment.EnvironmentUrl.ToString()
                 }
             };
         }
@@ -274,7 +283,9 @@ internal static class SingleEnvironmentAnalyzer
                 Details = new Dictionary<string, string>
                 {
                     ["SchemaName"] = v.SchemaName,
-                    ["Type"] = v.Type.ToString()
+                    ["DefinitionId"] = v.DefinitionId.ToString(),
+                    ["Type"] = v.Type.ToString(),
+                    ["EnvironmentUrl"] = snapshot.Environment.EnvironmentUrl.ToString()
                 }
             };
         }
@@ -302,7 +313,9 @@ internal static class SingleEnvironmentAnalyzer
                 Details = new Dictionary<string, string>
                 {
                     ["ConnectionReferenceLogicalName"] = cr.ConnectionReferenceLogicalName,
-                    ["ConnectorId"] = cr.ConnectorId ?? "(null)"
+                    ["ConnectionReferenceId"] = cr.ConnectionReferenceId.ToString(),
+                    ["ConnectorId"] = cr.ConnectorId ?? "(null)",
+                    ["EnvironmentUrl"] = snapshot.Environment.EnvironmentUrl.ToString()
                 }
             };
         }

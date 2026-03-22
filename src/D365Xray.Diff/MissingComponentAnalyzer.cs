@@ -42,7 +42,8 @@ internal static class MissingComponentAnalyzer
                             ["ComponentId"] = component.ComponentId.ToString(),
                             ["ComponentType"] = component.ComponentType.ToString(),
                             ["SolutionUniqueName"] = component.SolutionUniqueName,
-                            ["BaselineEnvironment"] = baseline.Environment.DisplayName
+                            ["BaselineEnvironment"] = baseline.Environment.DisplayName,
+                            ["EnvironmentUrl"] = baseline.Environment.EnvironmentUrl.ToString()
                         }
                     };
                 }

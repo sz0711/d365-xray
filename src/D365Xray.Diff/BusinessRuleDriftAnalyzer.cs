@@ -45,9 +45,11 @@ internal static class BusinessRuleDriftAnalyzer
                         Details = new Dictionary<string, string>
                         {
                             ["RuleName"] = baseRule.Name,
+                            ["BusinessRuleId"] = baseRule.BusinessRuleId.ToString(),
                             ["Entity"] = baseRule.PrimaryEntity,
                             ["Scope"] = baseRule.Scope.ToString(),
-                            ["BaselineActivated"] = baseRule.IsActivated.ToString()
+                            ["BaselineActivated"] = baseRule.IsActivated.ToString(),
+                            ["EnvironmentUrl"] = baseline.Environment.EnvironmentUrl.ToString()
                         }
                     };
                     continue;
@@ -71,9 +73,11 @@ internal static class BusinessRuleDriftAnalyzer
                         Details = new Dictionary<string, string>
                         {
                             ["RuleName"] = baseRule.Name,
+                            ["BusinessRuleId"] = baseRule.BusinessRuleId.ToString(),
                             ["Entity"] = baseRule.PrimaryEntity,
                             ["BaselineActivated"] = baseRule.IsActivated.ToString(),
-                            ["TargetActivated"] = targetRule.IsActivated.ToString()
+                            ["TargetActivated"] = targetRule.IsActivated.ToString(),
+                            ["EnvironmentUrl"] = baseline.Environment.EnvironmentUrl.ToString()
                         }
                     };
                 }
@@ -94,8 +98,10 @@ internal static class BusinessRuleDriftAnalyzer
                         Details = new Dictionary<string, string>
                         {
                             ["RuleName"] = baseRule.Name,
+                            ["BusinessRuleId"] = baseRule.BusinessRuleId.ToString(),
                             ["BaselineScope"] = baseRule.Scope.ToString(),
-                            ["TargetScope"] = targetRule.Scope.ToString()
+                            ["TargetScope"] = targetRule.Scope.ToString(),
+                            ["EnvironmentUrl"] = baseline.Environment.EnvironmentUrl.ToString()
                         }
                     };
                 }
@@ -116,8 +122,10 @@ internal static class BusinessRuleDriftAnalyzer
                         Details = new Dictionary<string, string>
                         {
                             ["RuleName"] = baseRule.Name,
+                            ["BusinessRuleId"] = baseRule.BusinessRuleId.ToString(),
                             ["BaselineEntity"] = baseRule.PrimaryEntity,
-                            ["TargetEntity"] = targetRule.PrimaryEntity
+                            ["TargetEntity"] = targetRule.PrimaryEntity,
+                            ["EnvironmentUrl"] = baseline.Environment.EnvironmentUrl.ToString()
                         }
                     };
                 }

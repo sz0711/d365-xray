@@ -49,8 +49,10 @@ internal static class PluginAnalyzer
                         Details = new Dictionary<string, string>
                         {
                             ["AssemblyName"] = name,
+                            ["PluginAssemblyId"] = basePlg.PluginAssemblyId.ToString(),
                             ["BaselineVersion"] = basePlg.Version ?? "(null)",
-                            ["BaselineEnvironment"] = baseline.Environment.DisplayName
+                            ["BaselineEnvironment"] = baseline.Environment.DisplayName,
+                            ["EnvironmentUrl"] = baseline.Environment.EnvironmentUrl.ToString()
                         }
                     };
                     continue;
@@ -71,8 +73,10 @@ internal static class PluginAnalyzer
                         Details = new Dictionary<string, string>
                         {
                             ["AssemblyName"] = name,
+                            ["PluginAssemblyId"] = basePlg.PluginAssemblyId.ToString(),
                             ["BaselineVersion"] = basePlg.Version ?? "(null)",
-                            ["TargetVersion"] = targetPlg.Version ?? "(null)"
+                            ["TargetVersion"] = targetPlg.Version ?? "(null)",
+                            ["EnvironmentUrl"] = baseline.Environment.EnvironmentUrl.ToString()
                         }
                     };
                 }
@@ -93,8 +97,10 @@ internal static class PluginAnalyzer
                         Details = new Dictionary<string, string>
                         {
                             ["AssemblyName"] = name,
+                            ["PluginAssemblyId"] = basePlg.PluginAssemblyId.ToString(),
                             ["BaselineIsolation"] = basePlg.IsolationMode.ToString(),
-                            ["TargetIsolation"] = targetPlg.IsolationMode.ToString()
+                            ["TargetIsolation"] = targetPlg.IsolationMode.ToString(),
+                            ["EnvironmentUrl"] = baseline.Environment.EnvironmentUrl.ToString()
                         }
                     };
                 }
@@ -131,9 +137,11 @@ internal static class PluginAnalyzer
                         Details = new Dictionary<string, string>
                         {
                             ["StepName"] = name,
+                            ["StepId"] = baseStep.StepId.ToString(),
                             ["Message"] = baseStep.MessageName ?? "(null)",
                             ["Entity"] = baseStep.PrimaryEntity ?? "(null)",
-                            ["BaselineEnvironment"] = baseline.Environment.DisplayName
+                            ["BaselineEnvironment"] = baseline.Environment.DisplayName,
+                            ["EnvironmentUrl"] = baseline.Environment.EnvironmentUrl.ToString()
                         }
                     };
                     continue;
@@ -156,8 +164,10 @@ internal static class PluginAnalyzer
                         Details = new Dictionary<string, string>
                         {
                             ["StepName"] = name,
+                            ["StepId"] = baseStep.StepId.ToString(),
                             ["BaselineDisabled"] = baseStep.IsDisabled.ToString(),
-                            ["TargetDisabled"] = targetStep.IsDisabled.ToString()
+                            ["TargetDisabled"] = targetStep.IsDisabled.ToString(),
+                            ["EnvironmentUrl"] = baseline.Environment.EnvironmentUrl.ToString()
                         }
                     };
                 }
@@ -178,8 +188,10 @@ internal static class PluginAnalyzer
                         Details = new Dictionary<string, string>
                         {
                             ["StepName"] = name,
+                            ["StepId"] = baseStep.StepId.ToString(),
                             ["BaselineStage"] = baseStep.Stage.ToString(),
-                            ["TargetStage"] = targetStep.Stage.ToString()
+                            ["TargetStage"] = targetStep.Stage.ToString(),
+                            ["EnvironmentUrl"] = baseline.Environment.EnvironmentUrl.ToString()
                         }
                     };
                 }

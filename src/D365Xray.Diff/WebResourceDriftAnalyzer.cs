@@ -36,8 +36,10 @@ internal static class WebResourceDriftAnalyzer
                         Details = new Dictionary<string, string>
                         {
                             ["ResourceName"] = name,
+                            ["WebResourceId"] = baseRes.WebResourceId.ToString(),
                             ["ResourceType"] = baseRes.WebResourceType.ToString(),
-                            ["BaselineEnvironment"] = baseline.Environment.DisplayName
+                            ["BaselineEnvironment"] = baseline.Environment.DisplayName,
+                            ["EnvironmentUrl"] = baseline.Environment.EnvironmentUrl.ToString()
                         }
                     };
                     continue;
@@ -59,8 +61,10 @@ internal static class WebResourceDriftAnalyzer
                         Details = new Dictionary<string, string>
                         {
                             ["ResourceName"] = name,
+                            ["WebResourceId"] = baseRes.WebResourceId.ToString(),
                             ["BaselineType"] = baseRes.WebResourceType.ToString(),
-                            ["TargetType"] = targetRes.WebResourceType.ToString()
+                            ["TargetType"] = targetRes.WebResourceType.ToString(),
+                            ["EnvironmentUrl"] = baseline.Environment.EnvironmentUrl.ToString()
                         }
                     };
                 }
@@ -81,8 +85,10 @@ internal static class WebResourceDriftAnalyzer
                         Details = new Dictionary<string, string>
                         {
                             ["ResourceName"] = name,
+                            ["WebResourceId"] = baseRes.WebResourceId.ToString(),
                             ["BaselineManaged"] = baseRes.IsManaged.ToString(),
-                            ["TargetManaged"] = targetRes.IsManaged.ToString()
+                            ["TargetManaged"] = targetRes.IsManaged.ToString(),
+                            ["EnvironmentUrl"] = baseline.Environment.EnvironmentUrl.ToString()
                         }
                     };
                 }

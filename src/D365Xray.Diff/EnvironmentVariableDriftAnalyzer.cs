@@ -38,9 +38,11 @@ internal static class EnvironmentVariableDriftAnalyzer
                         Details = new Dictionary<string, string>
                         {
                             ["SchemaName"] = schema,
+                            ["DefinitionId"] = baseVar.DefinitionId.ToString(),
                             ["Type"] = baseVar.Type.ToString(),
                             ["IsRequired"] = baseVar.IsRequired.ToString(),
-                            ["BaselineEnvironment"] = baseline.Environment.DisplayName
+                            ["BaselineEnvironment"] = baseline.Environment.DisplayName,
+                            ["EnvironmentUrl"] = baseline.Environment.EnvironmentUrl.ToString()
                         }
                     };
                     continue;
@@ -62,8 +64,10 @@ internal static class EnvironmentVariableDriftAnalyzer
                         Details = new Dictionary<string, string>
                         {
                             ["SchemaName"] = schema,
+                            ["DefinitionId"] = baseVar.DefinitionId.ToString(),
                             ["BaselineType"] = baseVar.Type.ToString(),
-                            ["TargetType"] = targetVar.Type.ToString()
+                            ["TargetType"] = targetVar.Type.ToString(),
+                            ["EnvironmentUrl"] = baseline.Environment.EnvironmentUrl.ToString()
                         }
                     };
                 }
@@ -93,8 +97,10 @@ internal static class EnvironmentVariableDriftAnalyzer
                         Details = new Dictionary<string, string>
                         {
                             ["SchemaName"] = schema,
+                            ["DefinitionId"] = baseVar.DefinitionId.ToString(),
                             ["BaselineValue"] = baseEffective ?? "(null)",
-                            ["TargetValue"] = targetEffective ?? "(null)"
+                            ["TargetValue"] = targetEffective ?? "(null)",
+                            ["EnvironmentUrl"] = baseline.Environment.EnvironmentUrl.ToString()
                         }
                     };
                 }
@@ -114,7 +120,9 @@ internal static class EnvironmentVariableDriftAnalyzer
                         Details = new Dictionary<string, string>
                         {
                             ["SchemaName"] = schema,
-                            ["TargetEnvironment"] = target.Environment.DisplayName
+                            ["DefinitionId"] = targetVar.DefinitionId.ToString(),
+                            ["TargetEnvironment"] = target.Environment.DisplayName,
+                            ["EnvironmentUrl"] = target.Environment.EnvironmentUrl.ToString()
                         }
                     };
                 }
