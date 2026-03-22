@@ -53,12 +53,13 @@ internal sealed class DataverseClient : IDataverseClient
             _logger.LogDebug("Fetching page {Page} from {Url}", page, SanitizeUrlForLog(url));
 
             var doc = await ExecuteWithRetryAsync(url, cancellationToken);
-            yield return doc;
 
-            // Follow @odata.nextLink if present
+            // Extract next link BEFORE yielding – caller may dispose the document
             url = doc.RootElement.TryGetProperty("@odata.nextLink", out var nextLink)
                 ? nextLink.GetString()
                 : null;
+
+            yield return doc;
         }
 
         _logger.LogDebug("Paging complete after {PageCount} page(s)", page);

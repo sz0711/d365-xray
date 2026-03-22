@@ -199,7 +199,7 @@ public class SnapshotCollectorTests
             [Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")] = "CustomSolution"
         };
 
-        var result = await DependencyCollector.CollectAsync(fake, solutionLookup, CancellationToken.None);
+        var result = await DependencyCollector.CollectAsync(fake, solutionLookup, Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance, CancellationToken.None);
 
         Assert.Single(result);
         var dep = result[0];
@@ -228,7 +228,7 @@ public class SnapshotCollectorTests
         }
         """);
 
-        var result = await DependencyCollector.CollectAsync(fake, new Dictionary<Guid, string>(), CancellationToken.None);
+        var result = await DependencyCollector.CollectAsync(fake, new Dictionary<Guid, string>(), Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance, CancellationToken.None);
 
         Assert.Equal(DependencyType.Optional, result[0].DependencyType);
     }
@@ -255,7 +255,7 @@ public class SnapshotCollectorTests
         }
         """);
 
-        var result = await SettingsCollector.CollectAsync(fake, CancellationToken.None);
+        var result = await SettingsCollector.CollectAsync(fake, Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance, CancellationToken.None);
 
         Assert.True(result.Count > 0);
 
@@ -283,7 +283,7 @@ public class SnapshotCollectorTests
         var fake = new FakeDataverseClient();
         fake.Enqueue("organizations", """{ "value": [] }""");
 
-        var result = await SettingsCollector.CollectAsync(fake, CancellationToken.None);
+        var result = await SettingsCollector.CollectAsync(fake, Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance, CancellationToken.None);
 
         Assert.Empty(result);
     }

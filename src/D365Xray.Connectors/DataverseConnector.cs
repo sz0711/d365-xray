@@ -52,12 +52,12 @@ internal sealed class DataverseConnector : IEnvironmentConnector
         // 5. Collect dependencies (cross-reference with solutions for names)
         _logger.LogInformation("Collecting dependencies...");
         var solutionLookup = solutions.ToDictionary(s => s.SolutionId, s => s.UniqueName);
-        var dependencies = await DependencyCollector.CollectAsync(_client, solutionLookup, cancellationToken);
+        var dependencies = await DependencyCollector.CollectAsync(_client, solutionLookup, _logger, cancellationToken);
         _logger.LogInformation("Collected {Count} dependencies", dependencies.Count);
 
         // 6. Collect environment settings
         _logger.LogInformation("Collecting environment settings...");
-        var settings = await SettingsCollector.CollectAsync(_client, cancellationToken);
+        var settings = await SettingsCollector.CollectAsync(_client, _logger, cancellationToken);
         _logger.LogInformation("Collected {Count} environment settings", settings.Count);
 
         stopwatch.Stop();

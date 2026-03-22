@@ -1,5 +1,6 @@
 using System.Text.Json;
 using D365Xray.Core.Model;
+using Microsoft.Extensions.Logging;
 
 namespace D365Xray.Connectors.Collectors;
 
@@ -51,35 +52,46 @@ internal static class SettingsCollector
     /// </summary>
     public static async Task<IReadOnlyList<EnvironmentSetting>> CollectAsync(
         IDataverseClient client,
+        ILogger logger,
         CancellationToken cancellationToken)
     {
-        var selectColumns = string.Join(",", Definitions.Select(d => d.Column));
-        var queryOptions = $"$select=organizationid,{selectColumns}";
-
-        using var doc = await client.GetAsync("organizations", queryOptions, cancellationToken);
-
-        var items = JsonHelper.GetValueArray(doc);
-        if (items.Length == 0)
+        try
         {
+            var selectColumns = string.Join(",", Definitions.Select(d => d.Column));
+            var queryOptions = $"$select=organizationid,{selectColumns}";
+
+            using var doc = await client.GetAsync("organizations", queryOptions, cancellationToken);
+
+            var items = JsonHelper.GetValueArray(doc);
+            if (items.Length == 0)
+            {
+                return [];
+            }
+
+            var orgRow = items[0];
+            var settings = new List<EnvironmentSetting>(Definitions.Length);
+
+            foreach (var def in Definitions)
+            {
+                var value = JsonHelper.GetRawValue(orgRow, def.Column);
+                settings.Add(new EnvironmentSetting
+                {
+                    Category = def.Category,
+                    Key = def.Column,
+                    Value = value,
+                    Description = def.Description
+                });
+            }
+
+            return settings;
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode is System.Net.HttpStatusCode.BadRequest)
+        {
+            logger.LogWarning(
+                "Organization settings could not be retrieved. " +
+                "Settings analysis will be skipped. Status: {StatusCode}", ex.StatusCode);
             return [];
         }
-
-        var orgRow = items[0];
-        var settings = new List<EnvironmentSetting>(Definitions.Length);
-
-        foreach (var def in Definitions)
-        {
-            var value = JsonHelper.GetRawValue(orgRow, def.Column);
-            settings.Add(new EnvironmentSetting
-            {
-                Category = def.Category,
-                Key = def.Column,
-                Value = value,
-                Description = def.Description
-            });
-        }
-
-        return settings;
     }
 
     private readonly record struct SettingDefinition(string Column, string Category, string Description);

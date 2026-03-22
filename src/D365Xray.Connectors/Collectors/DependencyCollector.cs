@@ -1,5 +1,6 @@
 using System.Text.Json;
 using D365Xray.Core.Model;
+using Microsoft.Extensions.Logging;
 
 namespace D365Xray.Connectors.Collectors;
 
@@ -21,19 +22,29 @@ internal static class DependencyCollector
     public static async Task<IReadOnlyList<SolutionDependency>> CollectAsync(
         IDataverseClient client,
         IReadOnlyDictionary<Guid, string> solutionIdToName,
+        ILogger logger,
         CancellationToken cancellationToken)
     {
         var dependencies = new List<SolutionDependency>();
 
-        await foreach (var page in client.GetPagedAsync(EntitySet, QueryOptions, cancellationToken))
+        try
         {
-            using (page)
+            await foreach (var page in client.GetPagedAsync(EntitySet, QueryOptions, cancellationToken))
             {
-                foreach (var item in JsonHelper.GetValueArray(page))
+                using (page)
                 {
-                    dependencies.Add(MapDependency(item, solutionIdToName));
+                    foreach (var item in JsonHelper.GetValueArray(page))
+                    {
+                        dependencies.Add(MapDependency(item, solutionIdToName));
+                    }
                 }
             }
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode is System.Net.HttpStatusCode.BadRequest)
+        {
+            logger.LogWarning(
+                "Dependencies entity is not available in this environment. " +
+                "Dependency analysis will be skipped. Status: {StatusCode}", ex.StatusCode);
         }
 
         return dependencies;
