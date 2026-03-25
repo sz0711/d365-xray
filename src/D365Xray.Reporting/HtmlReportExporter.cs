@@ -77,6 +77,18 @@ internal sealed class HtmlReportExporter
         // Organization Settings audit
         AppendSettingsAudit(sb, report);
 
+        // Plugin Registration Map
+        AppendPluginRegistrationMap(sb, report);
+
+        // Security Posture
+        AppendSecurityPosture(sb, report);
+
+        // Environment Variables
+        AppendEnvironmentVariables(sb, report);
+
+        // Entity Governance
+        AppendEntityGovernance(sb, report);
+
         // Severity breakdown as bar chart
         AppendSeveritySection(sb, report);
 
@@ -480,6 +492,46 @@ internal sealed class HtmlReportExporter
             }
         }
 
+        // Plugin registration insights
+        foreach (var map in report.PluginMaps)
+        {
+            if (map.TotalSteps > 0)
+            {
+                observations.Add($"<strong>{map.TotalSteps}</strong> custom plugin step(s) registered ({map.SyncSteps} sync, {map.AsyncSteps} async){(map.DisabledSteps > 0 ? $", <strong>{map.DisabledSteps} disabled</strong>" : "")}.");
+            }
+        }
+
+        // Security posture insights
+        foreach (var posture in report.SecurityPostures)
+        {
+            if (posture.UnmanagedRoleCount > 0)
+            {
+                observations.Add($"&#9888; <strong>{posture.UnmanagedRoleCount}</strong> unmanaged security role(s) detected &mdash; these should be managed in solutions for proper ALM.");
+            }
+        }
+
+        // Environment variable insights
+        foreach (var inv in report.EnvironmentVariableInventories)
+        {
+            if (inv.MissingValueCount > 0)
+            {
+                observations.Add($"&#9888; <strong>{inv.MissingValueCount}</strong> environment variable(s) missing values &mdash; may cause runtime failures.");
+            }
+        }
+
+        // Entity governance insights
+        foreach (var gov in report.EntityGovernances)
+        {
+            if (gov.TotalCustomEntities > 0)
+            {
+                var auditPct = gov.AuditEnabledCount * 100 / gov.TotalCustomEntities;
+                if (auditPct < 50)
+                {
+                    observations.Add($"&#9888; Only <strong>{auditPct}%</strong> of {gov.TotalCustomEntities} custom entities have auditing enabled &mdash; compliance gap.");
+                }
+            }
+        }
+
         // Risk summary
         var level = report.OverallRiskLevel;
         var score = report.OverallRiskScore;
@@ -579,6 +631,238 @@ internal sealed class HtmlReportExporter
         return version is not null
             ? $" &middot; Dataverse v{Encode(version)}"
             : "";
+    }
+
+    // ── Plugin Registration Map ─────────────────────────────
+
+    private static void AppendPluginRegistrationMap(StringBuilder sb, RiskReport report)
+    {
+        if (report.PluginMaps.Count == 0)
+        {
+            return;
+        }
+
+        sb.AppendLine("<section class=\"plugin-map\">");
+        sb.AppendLine("<h2>Plugin Registration Map</h2>");
+        sb.AppendLine("<p class=\"meta\">Non-Microsoft SDK message processing steps grouped by plugin type. Shows event pipeline registration details.</p>");
+
+        foreach (var map in report.PluginMaps)
+        {
+            if (map.TotalSteps == 0)
+            {
+                sb.AppendLine("<p class=\"meta\">No custom plugin steps registered.</p>");
+                continue;
+            }
+
+            // KPI row
+            sb.AppendLine("<div class=\"mini-kpi-row\">");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"<span class=\"mini-kpi\"><strong>{map.TotalSteps}</strong> Total Steps</span>");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"<span class=\"mini-kpi\"><strong>{map.SyncSteps}</strong> Sync</span>");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"<span class=\"mini-kpi\"><strong>{map.AsyncSteps}</strong> Async</span>");
+            if (map.DisabledSteps > 0)
+            {
+                sb.AppendLine(CultureInfo.InvariantCulture, $"<span class=\"mini-kpi warn\"><strong>{map.DisabledSteps}</strong> Disabled</span>");
+            }
+            sb.AppendLine("</div>");
+
+            foreach (var group in map.PluginGroups)
+            {
+                sb.AppendLine("<details>");
+                sb.AppendLine(CultureInfo.InvariantCulture,
+                    $"<summary><h3>{Encode(group.PluginName)} ({group.Steps.Count} step{(group.Steps.Count == 1 ? "" : "s")})</h3></summary>");
+                sb.AppendLine("<div class=\"table-scroll\"><table><thead><tr><th>Message</th><th>Entity</th><th>Stage</th><th>Mode</th><th>Status</th></tr></thead><tbody>");
+                foreach (var step in group.Steps)
+                {
+                    var status = step.IsDisabled
+                        ? "<span class=\"tag medium\">Disabled</span>"
+                        : "<span class=\"tag low\">Active</span>";
+                    var mode = step.Mode == "Synchronous"
+                        ? $"<span class=\"tag high\">Sync</span>"
+                        : $"<span class=\"tag info\">Async</span>";
+                    sb.AppendLine(CultureInfo.InvariantCulture,
+                        $"<tr><td>{Encode(step.Message ?? "")}</td><td>{Encode(step.Entity ?? "none")}</td><td>{Encode(step.Stage)}</td><td>{mode}</td><td>{status}</td></tr>");
+                }
+                sb.AppendLine("</tbody></table></div></details>");
+            }
+        }
+
+        sb.AppendLine("</section>");
+    }
+
+    // ── Security Posture ────────────────────────────────────
+
+    private static void AppendSecurityPosture(StringBuilder sb, RiskReport report)
+    {
+        if (report.SecurityPostures.Count == 0)
+        {
+            return;
+        }
+
+        sb.AppendLine("<section class=\"security-posture\">");
+        sb.AppendLine("<h2>Security Posture</h2>");
+        sb.AppendLine("<p class=\"meta\">Security roles and field security profiles. Unmanaged roles indicate custom security configuration that needs governance.</p>");
+
+        foreach (var posture in report.SecurityPostures)
+        {
+            // KPI row
+            sb.AppendLine("<div class=\"mini-kpi-row\">");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"<span class=\"mini-kpi\"><strong>{posture.TotalRoles}</strong> Total Roles</span>");
+            if (posture.UnmanagedRoleCount > 0)
+            {
+                sb.AppendLine(CultureInfo.InvariantCulture, $"<span class=\"mini-kpi warn\"><strong>{posture.UnmanagedRoleCount}</strong> Unmanaged</span>");
+            }
+            sb.AppendLine(CultureInfo.InvariantCulture, $"<span class=\"mini-kpi\"><strong>{posture.SystemRoles.Count}</strong> Managed</span>");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"<span class=\"mini-kpi\"><strong>{posture.FieldSecurityProfiles.Count}</strong> Field Security Profiles</span>");
+            sb.AppendLine("</div>");
+
+            // Custom (unmanaged) roles
+            if (posture.CustomRoles.Count > 0)
+            {
+                sb.AppendLine("<details open>");
+                sb.AppendLine(CultureInfo.InvariantCulture,
+                    $"<summary><h3>Custom / Unmanaged Roles ({posture.CustomRoles.Count})</h3></summary>");
+                sb.AppendLine("<div class=\"table-scroll\"><table><thead><tr><th>Name</th><th>Business Unit</th><th>Customizable</th><th>Last Modified</th></tr></thead><tbody>");
+                foreach (var role in posture.CustomRoles)
+                {
+                    var modified = role.ModifiedOn?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "";
+                    sb.AppendLine(CultureInfo.InvariantCulture,
+                        $"<tr><td>{Encode(role.Name)}</td><td>{Encode(role.BusinessUnit ?? "")}</td><td>{(role.IsCustomizable ? "Yes" : "No")}</td><td>{modified}</td></tr>");
+                }
+                sb.AppendLine("</tbody></table></div></details>");
+            }
+
+            // Field security profiles
+            if (posture.FieldSecurityProfiles.Count > 0)
+            {
+                sb.AppendLine("<details>");
+                sb.AppendLine(CultureInfo.InvariantCulture,
+                    $"<summary><h3>Field Security Profiles ({posture.FieldSecurityProfiles.Count})</h3></summary>");
+                sb.AppendLine("<div class=\"table-scroll\"><table><thead><tr><th>Name</th><th>Managed</th><th>Description</th></tr></thead><tbody>");
+                foreach (var fsp in posture.FieldSecurityProfiles)
+                {
+                    sb.AppendLine(CultureInfo.InvariantCulture,
+                        $"<tr><td>{Encode(fsp.Name)}</td><td>{(fsp.IsManaged ? "Yes" : "No")}</td><td>{Encode(fsp.Description ?? "")}</td></tr>");
+                }
+                sb.AppendLine("</tbody></table></div></details>");
+            }
+        }
+
+        sb.AppendLine("</section>");
+    }
+
+    // ── Environment Variables ───────────────────────────────
+
+    private static void AppendEnvironmentVariables(StringBuilder sb, RiskReport report)
+    {
+        if (report.EnvironmentVariableInventories.Count == 0)
+        {
+            return;
+        }
+
+        sb.AppendLine("<section class=\"env-variables\">");
+        sb.AppendLine("<h2>Environment Variables</h2>");
+        sb.AppendLine("<p class=\"meta\">Environment variable definitions and their value status. Missing values may cause runtime failures.</p>");
+
+        foreach (var inv in report.EnvironmentVariableInventories)
+        {
+            if (inv.Variables.Count == 0)
+            {
+                sb.AppendLine("<p class=\"meta\">No environment variables defined.</p>");
+                continue;
+            }
+
+            // KPI row
+            sb.AppendLine("<div class=\"mini-kpi-row\">");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"<span class=\"mini-kpi\"><strong>{inv.Variables.Count}</strong> Variables</span>");
+            if (inv.MissingValueCount > 0)
+            {
+                sb.AppendLine(CultureInfo.InvariantCulture, $"<span class=\"mini-kpi warn\"><strong>{inv.MissingValueCount}</strong> Missing Value</span>");
+            }
+            sb.AppendLine("</div>");
+
+            sb.AppendLine("<div class=\"table-scroll\"><table><thead><tr><th>Schema Name</th><th>Display Name</th><th>Type</th><th>Has Value</th><th>Required</th><th>Solution</th></tr></thead><tbody>");
+            foreach (var v in inv.Variables)
+            {
+                var hasVal = v.HasValue
+                    ? "<span class=\"tag low\">Yes</span>"
+                    : "<span class=\"tag high\">No</span>";
+                var required = v.IsRequired ? "Yes" : "";
+                sb.AppendLine(CultureInfo.InvariantCulture,
+                    $"<tr><td><code>{Encode(v.SchemaName)}</code></td><td>{Encode(v.DisplayName ?? "")}</td><td>{Encode(v.Type)}</td><td>{hasVal}</td><td>{required}</td><td>{Encode(v.SolutionName ?? "")}</td></tr>");
+            }
+            sb.AppendLine("</tbody></table></div>");
+        }
+
+        sb.AppendLine("</section>");
+    }
+
+    // ── Entity Governance ───────────────────────────────────
+
+    private static void AppendEntityGovernance(StringBuilder sb, RiskReport report)
+    {
+        if (report.EntityGovernances.Count == 0)
+        {
+            return;
+        }
+
+        sb.AppendLine("<section class=\"entity-governance\">");
+        sb.AppendLine("<h2>Entity Governance</h2>");
+        sb.AppendLine("<p class=\"meta\">Custom entity audit and change tracking coverage. Entities without audit enabled may create compliance gaps.</p>");
+
+        foreach (var gov in report.EntityGovernances)
+        {
+            if (gov.TotalCustomEntities == 0)
+            {
+                sb.AppendLine("<p class=\"meta\">No custom entities found.</p>");
+                continue;
+            }
+
+            var auditPct = gov.TotalCustomEntities > 0
+                ? (gov.AuditEnabledCount * 100 / gov.TotalCustomEntities)
+                : 0;
+            var ctPct = gov.TotalCustomEntities > 0
+                ? (gov.ChangeTrackingEnabledCount * 100 / gov.TotalCustomEntities)
+                : 0;
+
+            // KPI row (covers all custom entities including Microsoft)
+            sb.AppendLine("<div class=\"mini-kpi-row\">");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"<span class=\"mini-kpi\"><strong>{gov.TotalCustomEntities}</strong> Custom Entities (all)</span>");
+            var auditClass = auditPct < 50 ? " warn" : "";
+            sb.AppendLine(CultureInfo.InvariantCulture, $"<span class=\"mini-kpi{auditClass}\"><strong>{auditPct}%</strong> Audit Enabled</span>");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"<span class=\"mini-kpi\"><strong>{ctPct}%</strong> Change Tracking</span>");
+            if (gov.Entities.Count > 0)
+            {
+                sb.AppendLine(CultureInfo.InvariantCulture, $"<span class=\"mini-kpi\"><strong>{gov.Entities.Count}</strong> Your Custom Entities</span>");
+            }
+            sb.AppendLine("</div>");
+
+            // Detail table for non-Microsoft custom entities only
+            if (gov.Entities.Count > 0)
+            {
+                sb.AppendLine("<details>");
+                sb.AppendLine(CultureInfo.InvariantCulture,
+                    $"<summary><h3>Your Custom Entities ({gov.Entities.Count})</h3></summary>");
+                sb.AppendLine("<div class=\"table-scroll\"><table><thead><tr><th>Logical Name</th><th>Display Name</th><th>Audit</th><th>Change Tracking</th><th>Ownership</th><th>Columns</th></tr></thead><tbody>");
+                foreach (var e in gov.Entities)
+                {
+                    var audit = e.IsAuditEnabled
+                        ? "<span class=\"tag low\">On</span>"
+                        : "<span class=\"tag high\">Off</span>";
+                    var ct = e.ChangeTrackingEnabled
+                        ? "<span class=\"tag low\">On</span>"
+                        : "<span class=\"tag medium\">Off</span>";
+                    sb.AppendLine(CultureInfo.InvariantCulture,
+                        $"<tr><td><code>{Encode(e.LogicalName)}</code></td><td>{Encode(e.DisplayName ?? "")}</td><td>{audit}</td><td>{ct}</td><td>{Encode(e.OwnershipType)}</td><td>{e.AttributeCount?.ToString(CultureInfo.InvariantCulture) ?? ""}</td></tr>");
+                }
+                sb.AppendLine("</tbody></table></div></details>");
+            }
+            else
+            {
+                sb.AppendLine("<p class=\"meta\">No non-Microsoft custom entities found. All custom entities are part of Microsoft solutions.</p>");
+            }
+        }
+
+        sb.AppendLine("</section>");
     }
 
     // ── Severity Section ────────────────────────────────────
@@ -1050,6 +1334,16 @@ internal sealed class HtmlReportExporter
 
             /* Settings Audit */
             .settings-audit code { background: var(--gauge-bg); padding: .1rem .35rem; border-radius: .2rem; font-size: .85rem; }
+
+            /* Mini KPI rows for sub-sections */
+            .mini-kpi-row { display: flex; gap: 1rem; flex-wrap: wrap; margin: .75rem 0 1rem; }
+            .mini-kpi { display: inline-flex; align-items: center; gap: .3rem; padding: .4rem .8rem; background: var(--card); border: 1px solid var(--border); border-radius: .4rem; font-size: .85rem; }
+            .mini-kpi strong { font-size: 1.1rem; }
+            .mini-kpi.warn { border-color: #f59e0b; background: rgba(245,158,11,.08); }
+            .mini-kpi.warn strong { color: #f59e0b; }
+
+            /* Entity governance / env variables */
+            .entity-governance code, .env-variables code { background: var(--gauge-bg); padding: .1rem .35rem; border-radius: .2rem; font-size: .85rem; }
 
             /* Footer */
             footer { margin-top: 3rem; text-align: center; color: var(--muted); font-size: .8rem; }

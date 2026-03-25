@@ -55,6 +55,26 @@ public sealed record RiskReport
     public IReadOnlyList<EnvironmentSettingsSnapshot> SettingsSnapshots { get; init; } = [];
 
     /// <summary>
+    /// Per-environment plugin registration maps (SDK step details).
+    /// </summary>
+    public IReadOnlyList<PluginRegistrationMap> PluginMaps { get; init; } = [];
+
+    /// <summary>
+    /// Per-environment security posture summaries.
+    /// </summary>
+    public IReadOnlyList<SecurityPosture> SecurityPostures { get; init; } = [];
+
+    /// <summary>
+    /// Per-environment variable inventories with value status.
+    /// </summary>
+    public IReadOnlyList<EnvironmentVariableInventory> EnvironmentVariableInventories { get; init; } = [];
+
+    /// <summary>
+    /// Per-environment entity governance coverage.
+    /// </summary>
+    public IReadOnlyList<EntityGovernance> EntityGovernances { get; init; } = [];
+
+    /// <summary>
     /// Optional AI-generated enrichment. Null when AI was not invoked.
     /// When present, always carries explicit <see cref="AiProvenance"/>.
     /// </summary>

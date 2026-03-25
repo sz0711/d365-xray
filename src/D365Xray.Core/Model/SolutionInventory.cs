@@ -69,3 +69,91 @@ public sealed record EnvironmentSettingsSnapshot
     public TimeSpan? ScanDuration { get; init; }
     public IReadOnlyList<EnvironmentSetting> Settings { get; init; } = [];
 }
+
+/// <summary>
+/// Per-environment plugin registration map showing SDK steps grouped by plugin.
+/// </summary>
+public sealed record PluginRegistrationMap
+{
+    public required string EnvironmentDisplayName { get; init; }
+    public IReadOnlyList<PluginStepGroup> PluginGroups { get; init; } = [];
+    public int TotalSteps { get; init; }
+    public int SyncSteps { get; init; }
+    public int AsyncSteps { get; init; }
+    public int DisabledSteps { get; init; }
+}
+
+public sealed record PluginStepGroup(
+    string PluginName,
+    IReadOnlyList<StepSummaryItem> Steps);
+
+public sealed record StepSummaryItem(
+    string Name,
+    string? Message,
+    string? Entity,
+    string Stage,
+    string Mode,
+    bool IsDisabled);
+
+/// <summary>
+/// Per-environment security posture overview.
+/// </summary>
+public sealed record SecurityPosture
+{
+    public required string EnvironmentDisplayName { get; init; }
+    public IReadOnlyList<SecurityRoleSummaryItem> CustomRoles { get; init; } = [];
+    public IReadOnlyList<SecurityRoleSummaryItem> SystemRoles { get; init; } = [];
+    public IReadOnlyList<FieldSecurityProfileSummaryItem> FieldSecurityProfiles { get; init; } = [];
+    public int TotalRoles { get; init; }
+    public int UnmanagedRoleCount { get; init; }
+}
+
+public sealed record SecurityRoleSummaryItem(
+    string Name,
+    bool IsManaged,
+    bool IsCustomizable,
+    string? BusinessUnit,
+    DateTimeOffset? ModifiedOn);
+
+public sealed record FieldSecurityProfileSummaryItem(
+    string Name,
+    bool IsManaged,
+    string? Description);
+
+/// <summary>
+/// Per-environment variable inventory with value status.
+/// </summary>
+public sealed record EnvironmentVariableInventory
+{
+    public required string EnvironmentDisplayName { get; init; }
+    public IReadOnlyList<EnvironmentVariableSummaryItem> Variables { get; init; } = [];
+    public int MissingValueCount { get; init; }
+}
+
+public sealed record EnvironmentVariableSummaryItem(
+    string SchemaName,
+    string? DisplayName,
+    string Type,
+    bool HasValue,
+    bool IsRequired,
+    string? SolutionName);
+
+/// <summary>
+/// Per-environment entity governance coverage (audit + change tracking).
+/// </summary>
+public sealed record EntityGovernance
+{
+    public required string EnvironmentDisplayName { get; init; }
+    public IReadOnlyList<EntityGovernanceItem> Entities { get; init; } = [];
+    public int TotalCustomEntities { get; init; }
+    public int AuditEnabledCount { get; init; }
+    public int ChangeTrackingEnabledCount { get; init; }
+}
+
+public sealed record EntityGovernanceItem(
+    string LogicalName,
+    string? DisplayName,
+    bool IsAuditEnabled,
+    bool ChangeTrackingEnabled,
+    string OwnershipType,
+    int? AttributeCount);

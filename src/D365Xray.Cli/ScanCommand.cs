@@ -118,11 +118,19 @@ internal sealed class ScanCommand
             ScanDuration = s.Metadata.CapturedDuration,
             Settings = s.Settings
         }).ToList();
+        var pluginMaps = snapshots.Select(BuildPluginRegistrationMap).ToList();
+        var securityPostures = snapshots.Select(BuildSecurityPosture).ToList();
+        var envVarInventories = snapshots.Select(BuildEnvironmentVariableInventory).ToList();
+        var entityGovernances = snapshots.Select(BuildEntityGovernance).ToList();
         riskReport = riskReport with
         {
             SolutionInventories = solutionInventories,
             CustomArtifactSummaries = customArtifacts,
-            SettingsSnapshots = settingsSnapshots
+            SettingsSnapshots = settingsSnapshots,
+            PluginMaps = pluginMaps,
+            SecurityPostures = securityPostures,
+            EnvironmentVariableInventories = envVarInventories,
+            EntityGovernances = entityGovernances
         };
 
         _logger.LogInformation(
@@ -341,6 +349,141 @@ internal sealed class ScanCommand
                 .Take(100) // Cap to avoid gigantic reports
                 .Select(w => new WebResourceSummaryItem(w.Name, w.WebResourceType.ToString(), w.IsManaged))
                 .ToList()
+        };
+    }
+
+    // ── Plugin registration map builder ─────────────────────
+
+    private static PluginRegistrationMap BuildPluginRegistrationMap(EnvironmentSnapshot snapshot)
+    {
+        var nonMsSteps = snapshot.SdkSteps
+            .Where(s => s.PluginTypeName is null || !IsMicrosoftPlugin(s.PluginTypeName))
+            .ToList();
+
+        var groups = nonMsSteps
+            .GroupBy(s => s.PluginTypeName ?? "(no plugin)", StringComparer.OrdinalIgnoreCase)
+            .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(g => new PluginStepGroup(
+                g.Key,
+                g.OrderBy(s => s.PrimaryEntity).ThenBy(s => s.MessageName)
+                    .Select(s => new StepSummaryItem(
+                        s.Name,
+                        s.MessageName,
+                        s.PrimaryEntity,
+                        s.Stage.ToString(),
+                        s.Mode.ToString(),
+                        s.IsDisabled))
+                    .ToList()))
+            .ToList();
+
+        return new PluginRegistrationMap
+        {
+            EnvironmentDisplayName = snapshot.Environment.DisplayName,
+            PluginGroups = groups,
+            TotalSteps = nonMsSteps.Count,
+            SyncSteps = nonMsSteps.Count(s => s.Mode == SdkStepMode.Synchronous),
+            AsyncSteps = nonMsSteps.Count(s => s.Mode == SdkStepMode.Asynchronous),
+            DisabledSteps = nonMsSteps.Count(s => s.IsDisabled)
+        };
+    }
+
+    // ── Security posture builder ────────────────────────────
+
+    private static SecurityPosture BuildSecurityPosture(EnvironmentSnapshot snapshot)
+    {
+        var custom = snapshot.SecurityRoles
+            .Where(r => !r.IsManaged)
+            .OrderBy(r => r.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(r => new SecurityRoleSummaryItem(r.Name, r.IsManaged, r.IsCustomizable, r.BusinessUnitName, r.ModifiedOn))
+            .ToList();
+
+        var system = snapshot.SecurityRoles
+            .Where(r => r.IsManaged)
+            .OrderBy(r => r.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(r => new SecurityRoleSummaryItem(r.Name, r.IsManaged, r.IsCustomizable, r.BusinessUnitName, r.ModifiedOn))
+            .ToList();
+
+        var fsp = snapshot.FieldSecurityProfiles
+            .OrderBy(f => f.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(f => new FieldSecurityProfileSummaryItem(f.Name, f.IsManaged, f.Description))
+            .ToList();
+
+        return new SecurityPosture
+        {
+            EnvironmentDisplayName = snapshot.Environment.DisplayName,
+            CustomRoles = custom,
+            SystemRoles = system,
+            FieldSecurityProfiles = fsp,
+            TotalRoles = snapshot.SecurityRoles.Count,
+            UnmanagedRoleCount = custom.Count
+        };
+    }
+
+    // ── Environment variable inventory builder ──────────────
+
+    private static EnvironmentVariableInventory BuildEnvironmentVariableInventory(EnvironmentSnapshot snapshot)
+    {
+        var vars = snapshot.EnvironmentVariables
+            .OrderBy(v => v.SchemaName, StringComparer.OrdinalIgnoreCase)
+            .Select(v => new EnvironmentVariableSummaryItem(
+                v.SchemaName,
+                v.DisplayName,
+                v.Type.ToString(),
+                v.HasValue,
+                v.IsRequired,
+                v.SolutionUniqueName))
+            .ToList();
+
+        return new EnvironmentVariableInventory
+        {
+            EnvironmentDisplayName = snapshot.Environment.DisplayName,
+            Variables = vars,
+            MissingValueCount = vars.Count(v => !v.HasValue)
+        };
+    }
+
+    // ── Entity governance builder ───────────────────────────
+
+    private static readonly string[] MicrosoftEntityPrefixes =
+        ["msdyn_", "mspp_", "msevtmgt_", "mspcat_", "mserp_", "msind_"];
+
+    private static bool IsMicrosoftEntity(string logicalName)
+    {
+        foreach (var prefix in MicrosoftEntityPrefixes)
+        {
+            if (logicalName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static EntityGovernance BuildEntityGovernance(EnvironmentSnapshot snapshot)
+    {
+        var allCustom = snapshot.EntityMetadata.Where(e => e.IsCustomEntity).ToList();
+
+        // Only show non-Microsoft custom entities in the detail table
+        var customEntities = allCustom
+            .Where(e => !e.IsManaged && !IsMicrosoftEntity(e.LogicalName))
+            .OrderBy(e => e.LogicalName, StringComparer.OrdinalIgnoreCase)
+            .Select(e => new EntityGovernanceItem(
+                e.LogicalName,
+                e.DisplayName,
+                e.IsAuditEnabled,
+                e.ChangeTrackingEnabled,
+                e.OwnershipType.ToString(),
+                e.AttributeCount))
+            .ToList();
+
+        return new EntityGovernance
+        {
+            EnvironmentDisplayName = snapshot.Environment.DisplayName,
+            Entities = customEntities,
+            TotalCustomEntities = allCustom.Count,
+            AuditEnabledCount = allCustom.Count(e => e.IsAuditEnabled),
+            ChangeTrackingEnabledCount = allCustom.Count(e => e.ChangeTrackingEnabled)
         };
     }
 }
