@@ -31,6 +31,7 @@ internal sealed class ScanCommand
         IReadOnlyList<ScanEnvironmentArg> environments,
         string outputDirectory,
         string? aiInstructionsPath,
+        ComparisonMode comparisonMode,
         CancellationToken cancellationToken)
     {
         if (environments.Count == 0)
@@ -71,7 +72,7 @@ internal sealed class ScanCommand
         // 2. Diff
         _logger.LogInformation("Running diff engine...");
         var diffEngine = _services.GetRequiredService<IDiffEngine>();
-        var comparison = diffEngine.Compare(snapshots);
+        var comparison = diffEngine.Compare(snapshots, comparisonMode);
         _logger.LogInformation("Diff complete: {Count} finding(s).", comparison.Findings.Count);
 
         // 3. Risk scoring
@@ -95,7 +96,14 @@ internal sealed class ScanCommand
             EnvironmentVariables = s.EnvironmentVariables.Count,
             BusinessRules = s.BusinessRules.Count,
             CustomConnectors = s.CustomConnectors.Count,
-            ServiceEndpoints = s.ServiceEndpoints.Count
+            ServiceEndpoints = s.ServiceEndpoints.Count,
+            Forms = s.Forms.Count,
+            Views = s.Views.Count,
+            Charts = s.Charts.Count,
+            AppModules = s.AppModules.Count,
+            SecurityRoles = s.SecurityRoles.Count,
+            FieldSecurityProfiles = s.FieldSecurityProfiles.Count,
+            Entities = s.EntityMetadata.Count
         }).ToList();
         riskReport = riskReport with { EnvironmentSummaries = summaries };
 

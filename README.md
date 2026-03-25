@@ -4,24 +4,24 @@
 
 [![.NET 10](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet)](https://dotnet.microsoft.com/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](#license)
-[![Status](https://img.shields.io/badge/status-V1%20Sprint%202%20Complete-blue)]()
+[![Status](https://img.shields.io/badge/status-V1%20Sprint%203%20Complete-blue)]()
 
 ---
 
 ## 📋 Overview
 
-**d365-xray** is a CLI tool that connects to one or more Dataverse environments, captures read-only snapshots, compares them, scores risk based on 30 built-in rules, and exports detailed reports in JSON, Markdown, and HTML.
+**d365-xray** is a CLI tool that connects to one or more Dataverse environments, captures read-only snapshots of 21 artifact types, compares them using Baseline or AllToAll mode, scores risk based on 44+ built-in rules, and exports detailed reports in JSON, Markdown, and interactive HTML.
 
 ### Key Capabilities
 
 | Feature | Description |
 |---------|-------------|
 | 🔗 **Multi-Environment Connect** | Authenticate via Azure Identity (ClientSecret, Interactive, DeviceCode, Default) |
-| 📸 **Snapshot Capture** | Solutions, components, layers, dependencies, settings, connections, plugins, workflows, business rules, environment variables, web resources |
-| 🔍 **Deterministic Diff** | 11 analyzers compare snapshots and produce reproducible findings |
-| ⚠️ **Risk Scoring** | 30 rules assign risk scores; overall level: Low / Medium / High / Critical |
+| 📸 **Snapshot Capture** | 21 artifact types: solutions, components, layers, dependencies, settings, connections, plugins, workflows, business rules, environment variables, web resources, forms, views, charts, app modules, security roles, field security profiles, entity metadata |
+| 🔍 **Deterministic Diff** | 16 cross-env analyzers + single-env checks; Baseline or AllToAll comparison modes |
+| ⚠️ **Risk Scoring** | 44+ rules assign risk scores; overall level: Low / Medium / High / Critical |
 | 🤖 **AI Enrichment (optional)** | Pluggable adapter for AI-powered analysis with provenance markers |
-| 📊 **Multi-Format Reports** | JSON (machine-readable), Markdown (docs), HTML dashboard (charts, dark mode, deep links, inventory) |
+| 📊 **Multi-Format Reports** | JSON (machine-readable), Markdown (docs), HTML dashboard (charts, dark mode, deep links, inventory, interactive search/filter, comparison mode badge) |
 | 🚦 **CI/CD Exit Codes** | `0` = OK, `2` = Critical Risk, `3` = Config Error |
 
 ---
@@ -32,21 +32,21 @@
 d365-xray.sln
 ├── src/
 │   ├── D365Xray.Core           # Domain model, service contracts (0 NuGet deps)
-│   ├── D365Xray.Connectors     # Dataverse Web API client, auth, 14 collectors
-│   ├── D365Xray.Diff           # Snapshot diff engine, 11 analyzers
-│   ├── D365Xray.Risk           # 30 risk rules, rule engine
+│   ├── D365Xray.Connectors     # Dataverse Web API client, auth, 21 collectors
+│   ├── D365Xray.Diff           # Snapshot diff engine, 16 cross-env analyzers
+│   ├── D365Xray.Risk           # 44+ risk rules, rule engine
 │   ├── D365Xray.Reporting      # JSON / Markdown / HTML exporters
 │   └── D365Xray.Cli            # System.CommandLine 2.0.5 entry point
 └── tests/
     ├── D365Xray.Core.Tests           # 13 tests
-    ├── D365Xray.Connectors.Tests     # 18 tests
-    ├── D365Xray.Diff.Tests           # 34 tests
+    ├── D365Xray.Connectors.Tests     # 25 tests
+    ├── D365Xray.Diff.Tests           # 44 tests
     ├── D365Xray.Risk.Tests           # 37 tests
-    ├── D365Xray.Reporting.Tests      # 16 tests
+    ├── D365Xray.Reporting.Tests      # 31 tests
     └── D365Xray.IntegrationTests     # 10 live Dataverse integration tests
 ```
 
-**48 source files** · **128 tests** (118 unit + 10 integration) · **0 warnings**
+**67 source files** · **160 tests** (150 unit + 10 integration) · **0 warnings**
 
 ### Pipeline
 
@@ -84,9 +84,13 @@ d365-xray captures and analyzes the following Dataverse artifacts:
 | Workflows / Flows | `WorkflowCollector` | `WorkflowDriftAnalyzer` | Deactivated in production |
 | Business Rules | `BusinessRuleCollector` | `BusinessRuleDriftAnalyzer` | Deactivated in production |
 | Environment Variables | `EnvironmentVariableCollector` | `EnvironmentVariableDriftAnalyzer` | Required vars without value |
-| `IRiskScorer` | `RiskRuleEngine` | Evaluate risk |
-| `IReportExporter` | `CompositeReportExporter` | Export reports |
-| `IAiAnalysisAdapter` | `NullAiAnalysisAdapter` | AI enrichment (no-op default) |
+| Forms | `FormCollector` | `FormDriftAnalyzer` | — |
+| Views | `ViewCollector` | `ViewDriftAnalyzer` | — |
+| Charts | `ChartCollector` | — | — |
+| App Modules | `AppModuleCollector` | `AppModuleDriftAnalyzer` | — |
+| Security Roles | `SecurityRoleCollector` | `SecurityRoleDriftAnalyzer` | — |
+| Field Security Profiles | `FieldSecurityProfileCollector` | — | — |
+| Entity Metadata | `EntityMetadataCollector` | `EntityMetadataDriftAnalyzer` | — |
 
 ---
 
@@ -133,8 +137,9 @@ dotnet run --project src/D365Xray.Cli -- scan \
   --auth Interactive \
   --client-id <APP_ID>
 
-# ── Two-environment comparison (Dev vs Prod) ─────────────────
+# ── Two-environment comparison (Dev vs Prod) – Baseline mode ─
 # The first --name maps to the first --env URL, the second to the second, etc.
+# Baseline mode (default): first env = baseline, all others compared against it.
 dotnet run --project src/D365Xray.Cli -- scan \
   --env https://orgXXXXXX.crm4.dynamics.com https://orgYYYYYY.crm4.dynamics.com \
   --name Dev Prod \
@@ -144,7 +149,8 @@ dotnet run --project src/D365Xray.Cli -- scan \
   --client-secret <SECRET> \
   --output ./reports
 
-# ── Three-environment comparison (Dev → Test → Prod) ─────────
+# ── Three-environment comparison – AllToAll mode ─────────────
+# AllToAll mode: every pair of environments is compared (n*(n-1)/2 pairs).
 dotnet run --project src/D365Xray.Cli -- scan \
   --env https://dev.crm4.dynamics.com https://test.crm4.dynamics.com https://prod.crm4.dynamics.com \
   --name Dev Test Prod \
@@ -152,6 +158,7 @@ dotnet run --project src/D365Xray.Cli -- scan \
   --tenant-id <TENANT_ID> \
   --client-id <APP_ID> \
   --client-secret <SECRET> \
+  --comparison-mode AllToAll \
   --output ./reports
 
 # ── DefaultAzureCredential (auto-detect: env vars → MI → VS/CLI → browser)
@@ -196,6 +203,7 @@ dotnet run --project src/D365Xray.Cli -- scan \
 | `--client-id` | | | App registration client ID |
 | `--client-secret` | | | Client secret (prefer env vars) |
 | `--output` | `-o` | | Output directory (default: `./output`) |
+| `--comparison-mode` | `-m` | | Comparison strategy: `Baseline` (default) or `AllToAll` |
 | `--ai-instructions` | | | Path to Markdown file with custom AI instructions |
 
 ### Exit Codes
@@ -265,7 +273,7 @@ Reports are written to the `--output` directory:
 |------|--------|-------------|
 | `report.json` | JSON | Machine-readable, full data including `environmentSummaries` |
 | `report.md` | Markdown | Human-readable documentation with inventory and finding details |
-| `report.html` | HTML | Standalone dashboard with charts, dark mode toggle, deep links, and AI callouts |
+| `report.html` | HTML | Standalone dashboard with charts, dark mode toggle, deep links, AI callouts, interactive search/filter bar, comparison mode badge, and Cloud Flow deep links via make.powerautomate.com |
 
 ---
 
@@ -296,16 +304,16 @@ d365-xray/
 │   ├── D365Xray.Core/
 │   │   ├── ServiceContracts.cs     # 5 interfaces
 │   │   ├── NullAiAnalysisAdapter.cs
-│   │   └── Model/                  # 18 domain model records
+│   │   └── Model/                  # 25 domain model records
 │   ├── D365Xray.Connectors/
 │   │   ├── DataverseClient.cs      # Web API v9.2, 429 retry, OData paging
 │   │   ├── CredentialFactory.cs    # AuthMethod → TokenCredential mapping
 │   │   ├── DataverseConnector.cs   # Snapshot orchestrator
-│   │   └── Collectors/             # 14 collectors (solutions, plugins, workflows, etc.)
+│   │   └── Collectors/             # 21 collectors (solutions, plugins, workflows, forms, views, etc.)
 │   ├── D365Xray.Diff/
-│   │   └── 11 analyzers + SnapshotDiffEngine + SingleEnvironmentAnalyzer
+│   │   └── 16 cross-env analyzers + SnapshotDiffEngine + SingleEnvironmentAnalyzer
 │   ├── D365Xray.Risk/
-│   │   └── 30 rules + RiskRuleEngine
+│   │   └── 44+ rules + RiskRuleEngine
 │   ├── D365Xray.Reporting/
 │   │   └── JSON, Markdown, HTML exporters
 │   └── D365Xray.Cli/
@@ -313,7 +321,7 @@ d365-xray/
 │       ├── ScanCommand.cs          # 6-step pipeline orchestration
 │       └── ExitCodes.cs
 └── tests/
-    └── 6 test projects (128 tests total)
+    └── 6 test projects (160 tests total)
 ```
 
 ---

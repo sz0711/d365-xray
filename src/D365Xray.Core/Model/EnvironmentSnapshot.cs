@@ -22,6 +22,13 @@ public sealed record EnvironmentSnapshot
     public IReadOnlyList<WebResource> WebResources { get; init; } = [];
     public IReadOnlyList<WorkflowDefinition> Workflows { get; init; } = [];
     public IReadOnlyList<BusinessRule> BusinessRules { get; init; } = [];
+    public IReadOnlyList<FormDefinition> Forms { get; init; } = [];
+    public IReadOnlyList<ViewDefinition> Views { get; init; } = [];
+    public IReadOnlyList<ChartDefinition> Charts { get; init; } = [];
+    public IReadOnlyList<AppModule> AppModules { get; init; } = [];
+    public IReadOnlyList<SecurityRole> SecurityRoles { get; init; } = [];
+    public IReadOnlyList<FieldSecurityProfile> FieldSecurityProfiles { get; init; } = [];
+    public IReadOnlyList<EntityMetadataInfo> EntityMetadata { get; init; } = [];
 }
 
 /// <summary>
@@ -29,7 +36,7 @@ public sealed record EnvironmentSnapshot
 /// </summary>
 public sealed record SnapshotMetadata
 {
-    public const int CurrentSchemaVersion = 2;
+    public const int CurrentSchemaVersion = 3;
 
     public int SchemaVersion { get; init; } = CurrentSchemaVersion;
     public required DateTimeOffset CapturedAtUtc { get; init; }

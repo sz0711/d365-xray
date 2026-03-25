@@ -28,9 +28,15 @@ internal static class DeepLinkBuilder
             return $"{baseUrl}/main.aspx?forceUCI=1&pagetype=entityrecord&etn=solution&id={Uri.EscapeDataString(solId)}";
         }
 
-        // Workflow / Cloud Flow
+        // Workflow / Cloud Flow — route modern flows to Power Automate portal
         if (details.TryGetValue("WorkflowId", out var wfId) && IsGuid(wfId))
         {
+            if (details.TryGetValue("Category", out var cat) &&
+                string.Equals(cat, "ModernFlow", StringComparison.OrdinalIgnoreCase))
+            {
+                // Power Automate cloud flow detail page
+                return $"https://make.powerautomate.com/environments/{ExtractEnvironmentIdFromUrl(baseUrl)}/flows/{Uri.EscapeDataString(wfId)}/details";
+            }
             return $"{baseUrl}/main.aspx?forceUCI=1&pagetype=entityrecord&etn=workflow&id={Uri.EscapeDataString(wfId)}";
         }
 
@@ -38,6 +44,31 @@ internal static class DeepLinkBuilder
         if (details.TryGetValue("BusinessRuleId", out var brId) && IsGuid(brId))
         {
             return $"{baseUrl}/main.aspx?forceUCI=1&pagetype=entityrecord&etn=workflow&id={Uri.EscapeDataString(brId)}";
+        }
+
+        // Form
+        if (details.TryGetValue("FormId", out var formId) && IsGuid(formId))
+        {
+            // Open form editor in the maker portal
+            return $"{baseUrl}/main.aspx?forceUCI=1&pagetype=entityrecord&etn=systemform&id={Uri.EscapeDataString(formId)}";
+        }
+
+        // View (saved query)
+        if (details.TryGetValue("ViewId", out var viewId) && IsGuid(viewId))
+        {
+            return $"{baseUrl}/main.aspx?forceUCI=1&pagetype=entityrecord&etn=savedquery&id={Uri.EscapeDataString(viewId)}";
+        }
+
+        // App Module
+        if (details.TryGetValue("AppModuleId", out var appId) && IsGuid(appId))
+        {
+            return $"{baseUrl}/main.aspx?forceUCI=1&pagetype=entityrecord&etn=appmodule&id={Uri.EscapeDataString(appId)}";
+        }
+
+        // Security Role
+        if (details.TryGetValue("RoleId", out var roleId) && IsGuid(roleId))
+        {
+            return $"{baseUrl}/main.aspx?forceUCI=1&pagetype=entityrecord&etn=role&id={Uri.EscapeDataString(roleId)}";
         }
 
         // Plugin Assembly
@@ -87,4 +118,17 @@ internal static class DeepLinkBuilder
 
     private static bool IsGuid(string value) =>
         Guid.TryParse(value, out var g) && g != Guid.Empty;
+
+    /// <summary>
+    /// Extracts a pseudo environment-id from the Dataverse URL for use in Power Platform URLs.
+    /// Falls back to using the hostname as the identifier.
+    /// </summary>
+    private static string ExtractEnvironmentIdFromUrl(string baseUrl)
+    {
+        if (Uri.TryCreate(baseUrl, UriKind.Absolute, out var uri))
+        {
+            return Uri.EscapeDataString(uri.Host);
+        }
+        return "default";
+    }
 }

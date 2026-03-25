@@ -19,7 +19,8 @@ public interface IEnvironmentConnector
 /// </summary>
 public interface IDiffEngine
 {
-    ComparisonResult Compare(IReadOnlyList<EnvironmentSnapshot> snapshots);
+    ComparisonResult Compare(IReadOnlyList<EnvironmentSnapshot> snapshots,
+        ComparisonMode mode = ComparisonMode.Baseline);
 }
 
 /// <summary>

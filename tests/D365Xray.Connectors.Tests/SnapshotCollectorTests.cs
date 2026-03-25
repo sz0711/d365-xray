@@ -612,4 +612,237 @@ public class SnapshotCollectorTests
         Assert.True(br.IsActivated); // statecode=1 → activated
         Assert.False(br.IsManaged);
     }
+
+    // ── FormCollector ───────────────────────────────────────────
+
+    [Fact]
+    public async Task FormCollector_Maps_Fields()
+    {
+        var fake = new FakeDataverseClient();
+        fake.Enqueue("systemforms", """
+        {
+          "value": [
+            {
+              "formid": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+              "name": "Account Main",
+              "description": "Main account form",
+              "objecttypecode": "account",
+              "type": 2,
+              "ismanaged": true,
+              "isdefault": true,
+              "formactivationstate": 1,
+              "uniquename": "account_main_1",
+              "modifiedon": "2025-03-15T10:00:00Z"
+            }
+          ]
+        }
+        """);
+
+        var result = await FormCollector.CollectAsync(fake, NullLogger.Instance, CancellationToken.None);
+
+        Assert.Single(result);
+        var form = result[0];
+        Assert.Equal("Account Main", form.Name);
+        Assert.Equal("account", form.EntityLogicalName);
+        Assert.Equal(FormType.Main, form.FormType);
+        Assert.True(form.IsManaged);
+        Assert.True(form.IsDefault);
+        Assert.Equal("account_main_1", form.UniqueName);
+    }
+
+    // ── ViewCollector ───────────────────────────────────────────
+
+    [Fact]
+    public async Task ViewCollector_Maps_Fields()
+    {
+        var fake = new FakeDataverseClient();
+        fake.Enqueue("savedqueries", """
+        {
+          "value": [
+            {
+              "savedqueryid": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+              "name": "Active Accounts",
+              "returnedtypecode": "account",
+              "isdefault": true,
+              "ismanaged": false,
+              "iscustomizable": true,
+              "querytype": 0,
+              "modifiedon": "2025-02-20T08:00:00Z"
+            }
+          ]
+        }
+        """);
+
+        var result = await ViewCollector.CollectAsync(fake, NullLogger.Instance, CancellationToken.None);
+
+        Assert.Single(result);
+        var view = result[0];
+        Assert.Equal("Active Accounts", view.Name);
+        Assert.Equal("account", view.EntityLogicalName);
+        Assert.True(view.IsDefault);
+    }
+
+    // ── ChartCollector ──────────────────────────────────────────
+
+    [Fact]
+    public async Task ChartCollector_Maps_Fields()
+    {
+        var fake = new FakeDataverseClient();
+        fake.Enqueue("savedqueryvisualizations", """
+        {
+          "value": [
+            {
+              "savedqueryvisualizationid": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+              "name": "Pipeline Chart",
+              "primaryentitytypecode": "opportunity",
+              "ismanaged": true,
+              "isdefault": false,
+              "modifiedon": "2025-01-10T11:00:00Z"
+            }
+          ]
+        }
+        """);
+
+        var result = await ChartCollector.CollectAsync(fake, NullLogger.Instance, CancellationToken.None);
+
+        Assert.Single(result);
+        var chart = result[0];
+        Assert.Equal("Pipeline Chart", chart.Name);
+        Assert.Equal("opportunity", chart.EntityLogicalName);
+        Assert.True(chart.IsManaged);
+    }
+
+    // ── AppModuleCollector ──────────────────────────────────────
+
+    [Fact]
+    public async Task AppModuleCollector_Maps_Fields()
+    {
+        var fake = new FakeDataverseClient();
+        fake.Enqueue("appmodules", """
+        {
+          "value": [
+            {
+              "appmoduleid": "dddddddd-dddd-dddd-dddd-dddddddddddd",
+              "name": "Sales Hub",
+              "uniquename": "saleshub",
+              "appversion": "1.0.0.0",
+              "ismanaged": true,
+              "isdefault": false,
+              "statecode": 0,
+              "clienttype": 4,
+              "modifiedon": "2025-01-25T14:00:00Z"
+            }
+          ]
+        }
+        """);
+
+        var result = await AppModuleCollector.CollectAsync(fake, NullLogger.Instance, CancellationToken.None);
+
+        Assert.Single(result);
+        var app = result[0];
+        Assert.Equal("Sales Hub", app.Name);
+        Assert.Equal("saleshub", app.UniqueName);
+        Assert.Equal("1.0.0.0", app.AppVersion);
+        Assert.True(app.IsPublished); // statecode=0 → active/published
+        Assert.True(app.IsManaged);
+    }
+
+    // ── SecurityRoleCollector ───────────────────────────────────
+
+    [Fact]
+    public async Task SecurityRoleCollector_Maps_Fields()
+    {
+        var fake = new FakeDataverseClient();
+        fake.Enqueue("roles", """
+        {
+          "value": [
+            {
+              "roleid": "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
+              "name": "Sales Manager",
+              "_businessunitid_value": "ffffffff-ffff-ffff-ffff-ffffffffffff",
+              "ismanaged": true,
+              "iscustomizable": true,
+              "isinherited": false,
+              "modifiedon": "2025-02-10T09:00:00Z"
+            }
+          ]
+        }
+        """);
+
+        var result = await SecurityRoleCollector.CollectAsync(fake, NullLogger.Instance, CancellationToken.None);
+
+        Assert.Single(result);
+        var role = result[0];
+        Assert.Equal("Sales Manager", role.Name);
+        Assert.True(role.IsManaged);
+        Assert.False(role.IsInherited);
+        Assert.Equal(Guid.Parse("ffffffff-ffff-ffff-ffff-ffffffffffff"), role.BusinessUnitId);
+    }
+
+    // ── FieldSecurityProfileCollector ───────────────────────────
+
+    [Fact]
+    public async Task FieldSecurityProfileCollector_Maps_Fields()
+    {
+        var fake = new FakeDataverseClient();
+        fake.Enqueue("fieldsecurityprofiles", """
+        {
+          "value": [
+            {
+              "fieldsecurityprofileid": "11111111-2222-3333-4444-555555555555",
+              "name": "Restrict Email",
+              "description": "Restrict access to email fields",
+              "ismanaged": true,
+              "modifiedon": "2025-01-05T07:00:00Z"
+            }
+          ]
+        }
+        """);
+
+        var result = await FieldSecurityProfileCollector.CollectAsync(fake, NullLogger.Instance, CancellationToken.None);
+
+        Assert.Single(result);
+        var profile = result[0];
+        Assert.Equal("Restrict Email", profile.Name);
+        Assert.Equal("Restrict access to email fields", profile.Description);
+        Assert.True(profile.IsManaged);
+    }
+
+    // ── EntityMetadataCollector ─────────────────────────────────
+
+    [Fact]
+    public async Task EntityMetadataCollector_Maps_Fields()
+    {
+        var fake = new FakeDataverseClient();
+        fake.Enqueue("EntityDefinitions", """
+        {
+          "value": [
+            {
+              "MetadataId": "aabbccdd-1122-3344-5566-778899aabbcc",
+              "LogicalName": "account",
+              "DisplayName": { "UserLocalizedLabel": { "Label": "Account", "LanguageCode": 1033 } },
+              "SchemaName": "Account",
+              "IsManaged": true,
+              "IsCustomEntity": false,
+              "IsCustomizable": { "Value": true },
+              "IsAuditEnabled": { "Value": true },
+              "ChangeTrackingEnabled": true,
+              "OwnershipType": "UserOwned"
+            }
+          ]
+        }
+        """);
+
+        var result = await EntityMetadataCollector.CollectAsync(fake, NullLogger.Instance, CancellationToken.None);
+
+        Assert.Single(result);
+        var entity = result[0];
+        Assert.Equal("account", entity.LogicalName);
+        Assert.Equal("Account", entity.DisplayName);
+        Assert.Equal("Account", entity.SchemaName);
+        Assert.True(entity.IsAuditEnabled);
+        Assert.True(entity.ChangeTrackingEnabled);
+        Assert.False(entity.IsCustomEntity);
+        Assert.Equal(OwnershipType.UserOwned, entity.OwnershipType);
+    }
 }

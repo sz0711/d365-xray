@@ -36,7 +36,7 @@ public class EnvironmentSnapshotSerializationTests
 
         var json = JsonSerializer.Serialize(snapshot, JsonOptions);
 
-        Assert.Contains("\"schemaVersion\": 2", json);
+        Assert.Contains("\"schemaVersion\": 3", json);
     }
 
     [Fact]

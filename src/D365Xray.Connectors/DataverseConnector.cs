@@ -105,6 +105,41 @@ internal sealed class DataverseConnector : IEnvironmentConnector
         var businessRules = await BusinessRuleCollector.CollectAsync(_client, _logger, cancellationToken);
         _logger.LogInformation("Collected {Count} business rules", businessRules.Count);
 
+        // 16. Collect forms
+        _logger.LogInformation("Collecting forms...");
+        var forms = await FormCollector.CollectAsync(_client, _logger, cancellationToken);
+        _logger.LogInformation("Collected {Count} forms", forms.Count);
+
+        // 17. Collect views (saved queries)
+        _logger.LogInformation("Collecting views...");
+        var views = await ViewCollector.CollectAsync(_client, _logger, cancellationToken);
+        _logger.LogInformation("Collected {Count} views", views.Count);
+
+        // 18. Collect charts
+        _logger.LogInformation("Collecting charts...");
+        var charts = await ChartCollector.CollectAsync(_client, _logger, cancellationToken);
+        _logger.LogInformation("Collected {Count} charts", charts.Count);
+
+        // 19. Collect app modules
+        _logger.LogInformation("Collecting app modules...");
+        var appModules = await AppModuleCollector.CollectAsync(_client, _logger, cancellationToken);
+        _logger.LogInformation("Collected {Count} app modules", appModules.Count);
+
+        // 20. Collect security roles
+        _logger.LogInformation("Collecting security roles...");
+        var securityRoles = await SecurityRoleCollector.CollectAsync(_client, _logger, cancellationToken);
+        _logger.LogInformation("Collected {Count} security roles", securityRoles.Count);
+
+        // 21. Collect field security profiles
+        _logger.LogInformation("Collecting field security profiles...");
+        var fieldSecurityProfiles = await FieldSecurityProfileCollector.CollectAsync(_client, _logger, cancellationToken);
+        _logger.LogInformation("Collected {Count} field security profiles", fieldSecurityProfiles.Count);
+
+        // 22. Collect entity metadata
+        _logger.LogInformation("Collecting entity metadata...");
+        var entityMetadata = await EntityMetadataCollector.CollectAsync(_client, _logger, cancellationToken);
+        _logger.LogInformation("Collected {Count} entity definitions", entityMetadata.Count);
+
         stopwatch.Stop();
 
         _logger.LogInformation("Snapshot capture completed for {EnvName} in {Duration}",
@@ -132,7 +167,14 @@ internal sealed class DataverseConnector : IEnvironmentConnector
             SdkSteps = sdkSteps,
             WebResources = webResources,
             Workflows = workflows,
-            BusinessRules = businessRules
+            BusinessRules = businessRules,
+            Forms = forms,
+            Views = views,
+            Charts = charts,
+            AppModules = appModules,
+            SecurityRoles = securityRoles,
+            FieldSecurityProfiles = fieldSecurityProfiles,
+            EntityMetadata = entityMetadata
         };
     }
 

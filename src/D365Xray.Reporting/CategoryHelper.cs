@@ -18,6 +18,13 @@ internal static class CategoryHelper
         FindingCategory.WorkflowConfiguration => "cross-env + prod-like(single-env)",
         FindingCategory.BusinessRuleDrift => "cross-env + prod-like(single-env)",
         FindingCategory.ConfigurationAnomaly => "single-env",
+        FindingCategory.FormDrift => "cross-env",
+        FindingCategory.ViewDrift => "cross-env",
+        FindingCategory.ChartDrift => "cross-env",
+        FindingCategory.AppModuleDrift => "cross-env",
+        FindingCategory.SecurityRoleDrift => "cross-env",
+        FindingCategory.FieldSecurityDrift => "cross-env",
+        FindingCategory.EntityMetadataDrift => "cross-env",
         _ => "cross-env"
     };
 
@@ -28,12 +35,12 @@ internal static class CategoryHelper
 
         return category switch
         {
-            FindingCategory.ConfigurationAnomaly => isSingleEnvRun,
-            FindingCategory.LayerOverride => isCrossEnvRun || isSingleEnvRun,
-            FindingCategory.DependencyConflict => isCrossEnvRun || isSingleEnvRun,
-            FindingCategory.ConnectionConfiguration => isCrossEnvRun || isSingleEnvRun,
-            FindingCategory.PluginConfiguration => isCrossEnvRun || isSingleEnvRun,
-            FindingCategory.EnvironmentVariableDrift => isCrossEnvRun || isSingleEnvRun,
+            FindingCategory.ConfigurationAnomaly => true, // now runs per-env even in multi-env mode
+            FindingCategory.LayerOverride => true,
+            FindingCategory.DependencyConflict => true,
+            FindingCategory.ConnectionConfiguration => true,
+            FindingCategory.PluginConfiguration => true,
+            FindingCategory.EnvironmentVariableDrift => true,
             FindingCategory.WorkflowConfiguration => isCrossEnvRun || (isSingleEnvRun && hasProdLike),
             FindingCategory.BusinessRuleDrift => isCrossEnvRun || (isSingleEnvRun && hasProdLike),
             _ => isCrossEnvRun

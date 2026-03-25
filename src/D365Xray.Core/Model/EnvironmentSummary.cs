@@ -20,4 +20,11 @@ public sealed record EnvironmentSummary
     public int BusinessRules { get; init; }
     public int CustomConnectors { get; init; }
     public int ServiceEndpoints { get; init; }
+    public int Forms { get; init; }
+    public int Views { get; init; }
+    public int Charts { get; init; }
+    public int AppModules { get; init; }
+    public int SecurityRoles { get; init; }
+    public int FieldSecurityProfiles { get; init; }
+    public int Entities { get; init; }
 }

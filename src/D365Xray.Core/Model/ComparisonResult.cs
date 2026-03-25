@@ -8,7 +8,19 @@ public sealed record ComparisonResult
 {
     public required SnapshotMetadata Metadata { get; init; }
     public required IReadOnlyList<EnvironmentInfo> ComparedEnvironments { get; init; }
+    public ComparisonMode ComparisonMode { get; init; } = ComparisonMode.Baseline;
     public IReadOnlyList<Finding> Findings { get; init; } = [];
+}
+
+/// <summary>
+/// How multi-environment snapshots are compared.
+/// </summary>
+public enum ComparisonMode
+{
+    /// <summary>First snapshot is the baseline; remaining are compared against it.</summary>
+    Baseline,
+    /// <summary>Every pair of snapshots is compared.</summary>
+    AllToAll
 }
 
 /// <summary>
@@ -64,7 +76,14 @@ public enum FindingCategory
     WorkflowConfiguration,
     WebResourceDrift,
     EnvironmentVariableDrift,
-    BusinessRuleDrift
+    BusinessRuleDrift,
+    FormDrift,
+    ViewDrift,
+    ChartDrift,
+    AppModuleDrift,
+    SecurityRoleDrift,
+    FieldSecurityDrift,
+    EntityMetadataDrift
 }
 
 /// <summary>

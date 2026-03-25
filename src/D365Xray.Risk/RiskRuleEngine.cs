@@ -46,6 +46,7 @@ internal sealed class RiskRuleEngine : IRiskScorer
         {
             Metadata = comparisonResult.Metadata,
             ComparedEnvironments = comparisonResult.ComparedEnvironments,
+            ComparisonMode = comparisonResult.ComparisonMode,
             OverallRiskScore = overallScore,
             OverallRiskLevel = DeriveRiskLevel(overallScore),
             Findings = scoredFindings.OrderBy(f => f.FindingId, StringComparer.Ordinal).ToList(),

@@ -30,6 +30,11 @@ public sealed record RiskReport
         new Dictionary<Severity, int>();
 
     /// <summary>
+    /// Comparison mode used by the diff engine.
+    /// </summary>
+    public ComparisonMode ComparisonMode { get; init; } = ComparisonMode.Baseline;
+
+    /// <summary>
     /// Per-environment inventory counts for report dashboards.
     /// </summary>
     public IReadOnlyList<EnvironmentSummary> EnvironmentSummaries { get; init; } = [];

@@ -45,7 +45,7 @@ internal sealed class HtmlReportExporter
         sb.AppendLine("<div>");
         sb.AppendLine("<h1>D365 X-Ray Risk Report</h1>");
         sb.AppendLine(CultureInfo.InvariantCulture,
-            $"<p class=\"meta\">Captured {Encode(report.Metadata.CapturedAtUtc.ToString("u"))} &middot; Tool v{Encode(report.Metadata.ToolVersion)}</p>");
+            $"<p class=\"meta\">Captured {Encode(report.Metadata.CapturedAtUtc.ToString("u"))} &middot; Tool v{Encode(report.Metadata.ToolVersion)} &middot; <span class=\"mode-badge\">{Encode(report.ComparisonMode.ToString())}</span></p>");
         sb.AppendLine("</div>");
         sb.AppendLine("<button id=\"theme-toggle\" class=\"theme-btn\" title=\"Toggle dark mode\" aria-label=\"Toggle dark mode\">&#9790;</button>");
         sb.AppendLine("</div>");
@@ -151,7 +151,7 @@ internal sealed class HtmlReportExporter
         sb.AppendLine("<h2>Environment Inventory</h2>");
         sb.AppendLine("<div class=\"table-scroll\">");
         sb.AppendLine("<table><thead><tr>");
-        sb.AppendLine("<th>Environment</th><th>Type</th><th>Solutions</th><th>Components</th><th>Workflows</th><th>Plugins</th><th>SDK Steps</th><th>Web Resources</th><th>Conn. Refs</th><th>Env Vars</th><th>Business Rules</th><th>Connectors</th><th>Endpoints</th>");
+        sb.AppendLine("<th>Environment</th><th>Type</th><th>Solutions</th><th>Components</th><th>Workflows</th><th>Plugins</th><th>SDK Steps</th><th>Web Resources</th><th>Conn. Refs</th><th>Env Vars</th><th>Business Rules</th><th>Connectors</th><th>Endpoints</th><th>Forms</th><th>Views</th><th>Charts</th><th>Apps</th><th>Sec. Roles</th><th>Field Sec.</th><th>Entities</th>");
         sb.AppendLine("</tr></thead><tbody>");
 
         foreach (var env in report.EnvironmentSummaries)
@@ -169,7 +169,14 @@ internal sealed class HtmlReportExporter
             sb.Append(CultureInfo.InvariantCulture, $"<td>{env.EnvironmentVariables}</td>");
             sb.Append(CultureInfo.InvariantCulture, $"<td>{env.BusinessRules}</td>");
             sb.Append(CultureInfo.InvariantCulture, $"<td>{env.CustomConnectors}</td>");
-            sb.AppendLine(CultureInfo.InvariantCulture, $"<td>{env.ServiceEndpoints}</td></tr>");
+            sb.Append(CultureInfo.InvariantCulture, $"<td>{env.ServiceEndpoints}</td>");
+            sb.Append(CultureInfo.InvariantCulture, $"<td>{env.Forms}</td>");
+            sb.Append(CultureInfo.InvariantCulture, $"<td>{env.Views}</td>");
+            sb.Append(CultureInfo.InvariantCulture, $"<td>{env.Charts}</td>");
+            sb.Append(CultureInfo.InvariantCulture, $"<td>{env.AppModules}</td>");
+            sb.Append(CultureInfo.InvariantCulture, $"<td>{env.SecurityRoles}</td>");
+            sb.Append(CultureInfo.InvariantCulture, $"<td>{env.FieldSecurityProfiles}</td>");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"<td>{env.Entities}</td></tr>");
         }
 
         sb.AppendLine("</tbody></table>");
@@ -263,6 +270,16 @@ internal sealed class HtmlReportExporter
 
         sb.AppendLine("<section class=\"findings\">");
         sb.AppendLine("<h2>Findings</h2>");
+        sb.AppendLine("<div class=\"filter-bar\">");
+        sb.AppendLine("<input id=\"findingSearch\" type=\"text\" placeholder=\"Filter findings\u2026\" class=\"filter-input\" aria-label=\"Filter findings\">");
+        sb.AppendLine("<select id=\"severityFilter\" class=\"filter-select\" aria-label=\"Filter by severity\">");
+        sb.AppendLine("<option value=\"\">All Severities</option>");
+        foreach (var sev in Enum.GetValues<Severity>().OrderByDescending(s => s))
+        {
+            sb.AppendLine(CultureInfo.InvariantCulture, $"<option value=\"{sev.ToString().ToLowerInvariant()}\">{sev}</option>");
+        }
+        sb.AppendLine("</select>");
+        sb.AppendLine("</div>");
 
         // Build annotation lookup for AI enrichment
         var annotations = BuildAnnotationLookup(report);
@@ -280,7 +297,8 @@ internal sealed class HtmlReportExporter
             foreach (var finding in group.OrderByDescending(f => f.Severity))
             {
                 var sevClass = finding.Severity.ToString().ToLowerInvariant();
-                sb.AppendLine("<div class=\"finding\">");
+                sb.AppendLine(CultureInfo.InvariantCulture,
+                    $"<div class=\"finding\" data-severity=\"{sevClass}\" data-text=\"{Encode(finding.Title.ToLowerInvariant())} {Encode(finding.Description.ToLowerInvariant())}\">");
                 sb.AppendLine(CultureInfo.InvariantCulture,
                     $"  <h4><span class=\"tag {sevClass}\">{finding.Severity}</span> {Encode(finding.Title)}</h4>");
                 sb.AppendLine(CultureInfo.InvariantCulture,
@@ -395,6 +413,26 @@ internal sealed class HtmlReportExporter
             b.classList.toggle('dark');
             localStorage.setItem('d365xray-theme',b.classList.contains('dark')?'dark':'light');
           });
+        })();
+        """);
+
+        // Findings filter
+        sb.AppendLine("""
+        (function(){
+          var search=document.getElementById('findingSearch');
+          var sevFilter=document.getElementById('severityFilter');
+          if(!search||!sevFilter)return;
+          function applyFilter(){
+            var q=search.value.toLowerCase();
+            var sev=sevFilter.value;
+            document.querySelectorAll('.finding').forEach(function(el){
+              var matchText=!q||el.getAttribute('data-text').indexOf(q)!==-1;
+              var matchSev=!sev||el.getAttribute('data-severity')===sev;
+              el.style.display=matchText&&matchSev?'':'none';
+            });
+          }
+          search.addEventListener('input',applyFilter);
+          sevFilter.addEventListener('change',applyFilter);
         })();
         """);
 
@@ -514,7 +552,9 @@ internal sealed class HtmlReportExporter
             }
             a { color: #4d90fe; }
             body.dark a { color: #7aafff; }
-            header { margin-bottom: 1.5rem; }
+            header { margin-bottom: 1.5rem; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); color: #fff; padding: 1.5rem 2rem; border-radius: .75rem; margin: -2rem -2rem 1.5rem; padding-top: 2rem; }
+            header a { color: #7aafff; }
+            header .meta { color: rgba(255,255,255,.7); }
             .header-row { display: flex; justify-content: space-between; align-items: flex-start; }
             h1 { font-size: 1.8rem; margin-bottom: .25rem; }
             h2 { font-size: 1.3rem; margin: 1.5rem 0 .75rem; }
@@ -526,6 +566,7 @@ internal sealed class HtmlReportExporter
               line-height: 1; transition: background .2s;
             }
             .theme-btn:hover { background: var(--border); }
+            .mode-badge { display: inline-block; background: #5b8def; color: #fff; padding: .1rem .5rem; border-radius: .2rem; font-size: .75rem; font-weight: 600; letter-spacing: .03em; vertical-align: middle; }
 
             /* Dashboard */
             .dashboard { display: flex; gap: 1.5rem; align-items: center; flex-wrap: wrap; margin: 1rem 0; }
@@ -536,9 +577,10 @@ internal sealed class HtmlReportExporter
             .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: .75rem; flex: 1; }
             .kpi-card {
               background: var(--card); border: 1px solid var(--border); border-radius: .5rem;
-              padding: .75rem 1rem; text-align: center; transition: transform .15s;
+              padding: .75rem 1rem; text-align: center; transition: transform .15s, box-shadow .15s;
+              box-shadow: 0 1px 3px rgba(0,0,0,.08);
             }
-            .kpi-card:hover { transform: translateY(-2px); }
+            .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,.12); }
             .kpi-value { display: block; font-size: 1.8rem; font-weight: 700; }
             .kpi-card.critical .kpi-value { color: var(--color-critical); }
             .kpi-card.high .kpi-value { color: var(--color-high); }
@@ -562,6 +604,19 @@ internal sealed class HtmlReportExporter
 
             /* Charts */
             .chart-container { max-width: 480px; margin: .75rem 0; }
+
+            /* Filter bar */
+            .filter-bar { display: flex; gap: .75rem; margin: .75rem 0; flex-wrap: wrap; }
+            .filter-input {
+              flex: 1; min-width: 200px; padding: .45rem .75rem; border: 1px solid var(--border);
+              border-radius: .4rem; background: var(--card); color: var(--text); font-size: .9rem;
+              transition: border-color .2s;
+            }
+            .filter-input:focus { outline: none; border-color: #5b8def; }
+            .filter-select {
+              padding: .45rem .75rem; border: 1px solid var(--border); border-radius: .4rem;
+              background: var(--card); color: var(--text); font-size: .9rem; cursor: pointer;
+            }
 
             /* Findings */
             details { background: var(--card); border: 1px solid var(--border);

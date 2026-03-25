@@ -28,6 +28,13 @@ public class SnapshotDiffEngineTests
         IReadOnlyList<WebResource>? webResources = null,
         IReadOnlyList<WorkflowDefinition>? workflows = null,
         IReadOnlyList<BusinessRule>? businessRules = null,
+        IReadOnlyList<FormDefinition>? forms = null,
+        IReadOnlyList<ViewDefinition>? views = null,
+        IReadOnlyList<ChartDefinition>? charts = null,
+        IReadOnlyList<AppModule>? appModules = null,
+        IReadOnlyList<SecurityRole>? securityRoles = null,
+        IReadOnlyList<FieldSecurityProfile>? fieldSecurityProfiles = null,
+        IReadOnlyList<EntityMetadataInfo>? entityMetadata = null,
         EnvironmentType envType = EnvironmentType.Unknown)
     {
         return new EnvironmentSnapshot
@@ -57,7 +64,14 @@ public class SnapshotDiffEngineTests
             SdkSteps = sdkSteps ?? [],
             WebResources = webResources ?? [],
             Workflows = workflows ?? [],
-            BusinessRules = businessRules ?? []
+            BusinessRules = businessRules ?? [],
+            Forms = forms ?? [],
+            Views = views ?? [],
+            Charts = charts ?? [],
+            AppModules = appModules ?? [],
+            SecurityRoles = securityRoles ?? [],
+            FieldSecurityProfiles = fieldSecurityProfiles ?? [],
+            EntityMetadata = entityMetadata ?? []
         };
     }
 
@@ -961,5 +975,250 @@ public class SnapshotDiffEngineTests
         ]);
 
         Assert.Contains(result.Findings, f => f.FindingId.Contains("SINGLE-CONN-ORPHAN"));
+    }
+
+    // ── Form drift ──────────────────────────────────────────────
+
+    [Fact]
+    public void Detects_Missing_Form()
+    {
+        var forms = new[]
+        {
+            new FormDefinition
+            {
+                FormId = Guid.NewGuid(),
+                Name = "Account Main",
+                EntityLogicalName = "account",
+                FormType = FormType.Main,
+                UniqueName = "account_main_1"
+            }
+        };
+
+        IDiffEngine engine = new SnapshotDiffEngine();
+        var result = engine.Compare([
+            MakeSnapshot("Dev", forms: forms),
+            MakeSnapshot("Test")
+        ]);
+
+        var finding = Assert.Single(result.Findings, f => f.Category == FindingCategory.FormDrift);
+        Assert.Equal(Severity.High, finding.Severity); // Main form → high
+    }
+
+    [Fact]
+    public void Detects_Form_Type_Drift()
+    {
+        var devForms = new[]
+        {
+            new FormDefinition
+            {
+                FormId = Guid.NewGuid(),
+                Name = "Account Quick",
+                EntityLogicalName = "account",
+                FormType = FormType.QuickCreate,
+                UniqueName = "account_quick_1"
+            }
+        };
+        var testForms = new[]
+        {
+            new FormDefinition
+            {
+                FormId = Guid.NewGuid(),
+                Name = "Account Quick",
+                EntityLogicalName = "account",
+                FormType = FormType.QuickView,
+                UniqueName = "account_quick_1"
+            }
+        };
+
+        IDiffEngine engine = new SnapshotDiffEngine();
+        var result = engine.Compare([
+            MakeSnapshot("Dev", forms: devForms),
+            MakeSnapshot("Test", forms: testForms)
+        ]);
+
+        var finding = Assert.Single(result.Findings, f => f.FindingId.Contains("FORM-TYPE"));
+        Assert.Equal(Severity.Medium, finding.Severity);
+    }
+
+    // ── View drift ──────────────────────────────────────────────
+
+    [Fact]
+    public void Detects_Missing_View()
+    {
+        var views = new[]
+        {
+            new ViewDefinition
+            {
+                ViewId = Guid.NewGuid(),
+                Name = "Active Accounts",
+                EntityLogicalName = "account",
+                IsDefault = true
+            }
+        };
+
+        IDiffEngine engine = new SnapshotDiffEngine();
+        var result = engine.Compare([
+            MakeSnapshot("Dev", views: views),
+            MakeSnapshot("Test")
+        ]);
+
+        var finding = Assert.Single(result.Findings, f => f.Category == FindingCategory.ViewDrift);
+        Assert.Equal(Severity.High, finding.Severity); // default view → high
+    }
+
+    // ── App module drift ────────────────────────────────────────
+
+    [Fact]
+    public void Detects_Missing_AppModule()
+    {
+        var apps = new[]
+        {
+            new AppModule
+            {
+                AppModuleId = Guid.NewGuid(),
+                Name = "Sales Hub",
+                UniqueName = "saleshub",
+                AppVersion = "1.0.0.0",
+                IsPublished = true
+            }
+        };
+
+        IDiffEngine engine = new SnapshotDiffEngine();
+        var result = engine.Compare([
+            MakeSnapshot("Dev", appModules: apps),
+            MakeSnapshot("Test")
+        ]);
+
+        var finding = Assert.Single(result.Findings, f => f.Category == FindingCategory.AppModuleDrift);
+        Assert.Equal(Severity.High, finding.Severity); // published app → high
+    }
+
+    [Fact]
+    public void Detects_AppModule_Version_Drift()
+    {
+        var devApps = new[]
+        {
+            new AppModule { AppModuleId = Guid.NewGuid(), Name = "Sales Hub", UniqueName = "saleshub", AppVersion = "2.0.0.0", IsPublished = true }
+        };
+        var testApps = new[]
+        {
+            new AppModule { AppModuleId = Guid.NewGuid(), Name = "Sales Hub", UniqueName = "saleshub", AppVersion = "1.0.0.0", IsPublished = true }
+        };
+
+        IDiffEngine engine = new SnapshotDiffEngine();
+        var result = engine.Compare([
+            MakeSnapshot("Dev", appModules: devApps),
+            MakeSnapshot("Test", appModules: testApps)
+        ]);
+
+        var finding = Assert.Single(result.Findings, f => f.FindingId.Contains("APP-VERSION"));
+        Assert.Equal(Severity.Medium, finding.Severity);
+    }
+
+    // ── Security role drift ─────────────────────────────────────
+
+    [Fact]
+    public void Detects_Missing_SecurityRole()
+    {
+        var roles = new[]
+        {
+            new SecurityRole { RoleId = Guid.NewGuid(), Name = "Sales Manager", BusinessUnitId = Guid.NewGuid() }
+        };
+
+        IDiffEngine engine = new SnapshotDiffEngine();
+        var result = engine.Compare([
+            MakeSnapshot("Dev", securityRoles: roles),
+            MakeSnapshot("Test")
+        ]);
+
+        var finding = Assert.Single(result.Findings, f => f.Category == FindingCategory.SecurityRoleDrift);
+        Assert.Equal(Severity.High, finding.Severity);
+    }
+
+    // ── Entity metadata drift ───────────────────────────────────
+
+    [Fact]
+    public void Detects_Missing_CustomEntity()
+    {
+        var entities = new[]
+        {
+            new EntityMetadataInfo
+            {
+                MetadataId = Guid.NewGuid(),
+                LogicalName = "cr_invoice",
+                DisplayName = "Invoice",
+                SchemaName = "cr_Invoice",
+                IsCustomEntity = true,
+                IsAuditEnabled = true,
+                ChangeTrackingEnabled = true
+            }
+        };
+
+        IDiffEngine engine = new SnapshotDiffEngine();
+        var result = engine.Compare([
+            MakeSnapshot("Dev", entityMetadata: entities),
+            MakeSnapshot("Test")
+        ]);
+
+        var finding = Assert.Single(result.Findings, f => f.Category == FindingCategory.EntityMetadataDrift);
+        Assert.Equal(Severity.High, finding.Severity);
+    }
+
+    [Fact]
+    public void Detects_Entity_Audit_Drift()
+    {
+        var devEntities = new[]
+        {
+            new EntityMetadataInfo { MetadataId = Guid.NewGuid(), LogicalName = "account", DisplayName = "Account", SchemaName = "Account", IsCustomEntity = false, IsAuditEnabled = true, ChangeTrackingEnabled = true }
+        };
+        var testEntities = new[]
+        {
+            new EntityMetadataInfo { MetadataId = Guid.NewGuid(), LogicalName = "account", DisplayName = "Account", SchemaName = "Account", IsCustomEntity = false, IsAuditEnabled = false, ChangeTrackingEnabled = true }
+        };
+
+        IDiffEngine engine = new SnapshotDiffEngine();
+        var result = engine.Compare([
+            MakeSnapshot("Dev", entityMetadata: devEntities),
+            MakeSnapshot("Test", entityMetadata: testEntities)
+        ]);
+
+        var finding = Assert.Single(result.Findings, f => f.FindingId.Contains("META-AUDIT"));
+        Assert.Equal(Severity.High, finding.Severity); // audit enabled→disabled
+    }
+
+    // ── AllToAll mode ───────────────────────────────────────────
+
+    [Fact]
+    public void AllToAll_ComparesEveryPair()
+    {
+        var sol = new Solution { SolutionId = Guid.NewGuid(), UniqueName = "OnlyInA", DisplayName = "Only In A", Version = "1.0", IsManaged = true, Publisher = DefaultPublisher };
+
+        IDiffEngine engine = new SnapshotDiffEngine();
+        var result = engine.Compare([
+            MakeSnapshot("A", solutions: [sol]),
+            MakeSnapshot("B"),
+            MakeSnapshot("C")
+        ], ComparisonMode.AllToAll);
+
+        Assert.Equal(ComparisonMode.AllToAll, result.ComparisonMode);
+        // A↔B and A↔C should both detect missing solution; B↔C has none
+        var solFindings = result.Findings.Where(f => f.Category == FindingCategory.SolutionDrift).ToList();
+        Assert.True(solFindings.Count >= 2);
+    }
+
+    [Fact]
+    public void AllToAll_TagsPairLabel_OnFindings()
+    {
+        var sol = new Solution { SolutionId = Guid.NewGuid(), UniqueName = "TestSol", DisplayName = "Test", Version = "1.0", IsManaged = true, Publisher = DefaultPublisher };
+
+        IDiffEngine engine = new SnapshotDiffEngine();
+        var result = engine.Compare([
+            MakeSnapshot("Dev", solutions: [sol]),
+            MakeSnapshot("Test")
+        ], ComparisonMode.AllToAll);
+
+        var finding = result.Findings.FirstOrDefault(f => f.Category == FindingCategory.SolutionDrift);
+        Assert.NotNull(finding);
+        Assert.True(finding.Details.ContainsKey("PairLabel"));
     }
 }

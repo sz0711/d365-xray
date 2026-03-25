@@ -51,7 +51,14 @@ public class ReportExporterTests : IDisposable
                 EnvironmentVariables = 8,
                 BusinessRules = 5,
                 CustomConnectors = 2,
-                ServiceEndpoints = 1
+                ServiceEndpoints = 1,
+                Forms = 15,
+                Views = 30,
+                Charts = 6,
+                AppModules = 3,
+                SecurityRoles = 12,
+                FieldSecurityProfiles = 4,
+                Entities = 50
             },
             new EnvironmentSummary
             {
@@ -68,7 +75,14 @@ public class ReportExporterTests : IDisposable
                 EnvironmentVariables = 8,
                 BusinessRules = 5,
                 CustomConnectors = 2,
-                ServiceEndpoints = 1
+                ServiceEndpoints = 1,
+                Forms = 14,
+                Views = 28,
+                Charts = 5,
+                AppModules = 3,
+                SecurityRoles = 11,
+                FieldSecurityProfiles = 4,
+                Entities = 48
             }
         ];
 
@@ -456,5 +470,108 @@ public class ReportExporterTests : IDisposable
         Assert.True(json.Length > 100);
         Assert.True(markdown.Length > 100);
         Assert.True(html.Length > 1000);
+    }
+
+    // ── New deep link tests ─────────────────────────────────────
+
+    [Fact]
+    public void DeepLinkBuilder_CloudFlow_RoutesToPowerAutomate()
+    {
+        var flowId = Guid.NewGuid();
+        var details = new Dictionary<string, string>
+        {
+            ["EnvironmentUrl"] = "https://orgac796185.crm4.dynamics.com",
+            ["WorkflowId"] = flowId.ToString(),
+            ["Category"] = "ModernFlow"
+        };
+
+        var link = DeepLinkBuilder.TryBuildLink(details);
+
+        Assert.NotNull(link);
+        Assert.Contains("make.powerautomate.com", link);
+        Assert.Contains(flowId.ToString(), link);
+    }
+
+    [Fact]
+    public void DeepLinkBuilder_ClassicWorkflow_RoutesToDynamics()
+    {
+        var wfId = Guid.NewGuid();
+        var details = new Dictionary<string, string>
+        {
+            ["EnvironmentUrl"] = "https://dev.crm.dynamics.com",
+            ["WorkflowId"] = wfId.ToString(),
+            ["Category"] = "Workflow"
+        };
+
+        var link = DeepLinkBuilder.TryBuildLink(details);
+
+        Assert.NotNull(link);
+        Assert.Contains("etn=workflow", link);
+        Assert.Contains(wfId.ToString(), link);
+    }
+
+    [Theory]
+    [InlineData("FormId", "systemform")]
+    [InlineData("ViewId", "savedquery")]
+    [InlineData("AppModuleId", "appmodule")]
+    [InlineData("RoleId", "role")]
+    public void DeepLinkBuilder_ConstructsNewEntityLinks(string detailsKey, string entityName)
+    {
+        var id = Guid.NewGuid();
+        var details = new Dictionary<string, string>
+        {
+            ["EnvironmentUrl"] = "https://dev.crm.dynamics.com",
+            [detailsKey] = id.ToString()
+        };
+
+        var link = DeepLinkBuilder.TryBuildLink(details);
+
+        Assert.NotNull(link);
+        Assert.Contains($"etn={entityName}", link);
+        Assert.Contains(id.ToString(), link);
+    }
+
+    [Fact]
+    public void Html_ContainsFilterBar()
+    {
+        var report = MakeReport(findings: [
+            MakeFinding("F1", FindingCategory.SolutionDrift, Severity.High, 70)
+        ]);
+
+        var html = HtmlReportExporter.Build(report);
+
+        Assert.Contains("id=\"findingSearch\"", html);
+        Assert.Contains("id=\"severityFilter\"", html);
+        Assert.Contains("data-severity=", html);
+    }
+
+    [Fact]
+    public void Html_ShowsComparisonMode()
+    {
+        var report = MakeReport(findings: [
+            MakeFinding("F1", FindingCategory.SolutionDrift, Severity.Medium, 40)
+        ]);
+
+        var html = HtmlReportExporter.Build(report);
+
+        Assert.Contains("class=\"mode-badge\"", html);
+        Assert.Contains("Baseline", html);
+    }
+
+    [Fact]
+    public void Html_ContainsNewInventoryColumns()
+    {
+        var report = MakeReport();
+        var html = HtmlReportExporter.Build(report);
+
+        Assert.Contains("<th>Forms</th>", html);
+        Assert.Contains("<th>Views</th>", html);
+        Assert.Contains("<th>Charts</th>", html);
+        Assert.Contains("<th>Apps</th>", html);
+        Assert.Contains("<th>Sec. Roles</th>", html);
+        Assert.Contains("<th>Field Sec.</th>", html);
+        Assert.Contains("<th>Entities</th>", html);
+        Assert.Contains("<td>15</td>", html); // Dev forms
+        Assert.Contains("<td>50</td>", html); // Dev entities
     }
 }

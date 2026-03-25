@@ -319,6 +319,128 @@ public static class DefaultRiskRules
             BaseScore = 30,
             Description = "A business rule configuration differs between environments. " +
                 "Review scope, entity binding, and activation state."
+        },
+
+        // ── Form drift ──────────────────────────────────────────
+        new RiskRule
+        {
+            RuleId = "R-FRM-001",
+            Category = FindingCategory.FormDrift,
+            MinimumSeverity = Severity.High,
+            BaseScore = 70,
+            Description = "A form (especially Main) is missing in a target environment. " +
+                "Users may see unexpected or default forms."
+        },
+        new RiskRule
+        {
+            RuleId = "R-FRM-002",
+            Category = FindingCategory.FormDrift,
+            MinimumSeverity = null,
+            BaseScore = 30,
+            Description = "A form configuration differs between environments. " +
+                "Review form type and customization state."
+        },
+
+        // ── View drift ──────────────────────────────────────────
+        new RiskRule
+        {
+            RuleId = "R-VW-001",
+            Category = FindingCategory.ViewDrift,
+            MinimumSeverity = Severity.High,
+            BaseScore = 65,
+            Description = "A view (especially a default view) is missing in a target environment. " +
+                "Users may see unexpected data layouts."
+        },
+        new RiskRule
+        {
+            RuleId = "R-VW-002",
+            Category = FindingCategory.ViewDrift,
+            MinimumSeverity = null,
+            BaseScore = 25,
+            Description = "A view differs between environments. " +
+                "Review whether the difference is due to incomplete solution deployment."
+        },
+
+        // ── Chart drift ─────────────────────────────────────────
+        new RiskRule
+        {
+            RuleId = "R-CHT-001",
+            Category = FindingCategory.ChartDrift,
+            MinimumSeverity = null,
+            BaseScore = 20,
+            Description = "A chart visualization differs or is missing between environments. " +
+                "Review dashboard and reporting consistency."
+        },
+
+        // ── App module drift ────────────────────────────────────
+        new RiskRule
+        {
+            RuleId = "R-APP-001",
+            Category = FindingCategory.AppModuleDrift,
+            MinimumSeverity = Severity.High,
+            BaseScore = 75,
+            Description = "A published model-driven app is missing or has configuration drift. " +
+                "Users may not have access to expected application experiences."
+        },
+        new RiskRule
+        {
+            RuleId = "R-APP-002",
+            Category = FindingCategory.AppModuleDrift,
+            MinimumSeverity = null,
+            BaseScore = 35,
+            Description = "An app module configuration differs between environments. " +
+                "Review version, publication state, and client type."
+        },
+
+        // ── Security role drift ─────────────────────────────────
+        new RiskRule
+        {
+            RuleId = "R-ROLE-001",
+            Category = FindingCategory.SecurityRoleDrift,
+            MinimumSeverity = Severity.High,
+            BaseScore = 85,
+            Description = "A security role is missing in a target environment. " +
+                "Users assigned to this role will lose expected privileges."
+        },
+        new RiskRule
+        {
+            RuleId = "R-ROLE-002",
+            Category = FindingCategory.SecurityRoleDrift,
+            MinimumSeverity = null,
+            BaseScore = 50,
+            Description = "A security role differs between environments. " +
+                "Review role assignments and privilege configurations."
+        },
+
+        // ── Field security drift ────────────────────────────────
+        new RiskRule
+        {
+            RuleId = "R-FSEC-001",
+            Category = FindingCategory.FieldSecurityDrift,
+            MinimumSeverity = null,
+            BaseScore = 45,
+            Description = "A field security profile differs or is missing between environments. " +
+                "Field-level access restrictions may not be consistently applied."
+        },
+
+        // ── Entity metadata drift ───────────────────────────────
+        new RiskRule
+        {
+            RuleId = "R-META-001",
+            Category = FindingCategory.EntityMetadataDrift,
+            MinimumSeverity = Severity.High,
+            BaseScore = 80,
+            Description = "A custom entity is missing or has critical metadata drift (audit, change tracking). " +
+                "This can impact data integrity and compliance."
+        },
+        new RiskRule
+        {
+            RuleId = "R-META-002",
+            Category = FindingCategory.EntityMetadataDrift,
+            MinimumSeverity = null,
+            BaseScore = 35,
+            Description = "Entity metadata configuration differs between environments. " +
+                "Review audit, change tracking, and ownership settings."
         }
     ];
 }

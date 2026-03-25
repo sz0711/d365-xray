@@ -37,6 +37,7 @@ internal static class WorkflowDriftAnalyzer
                             ["WorkflowName"] = baseFlow.Name,
                             ["WorkflowId"] = baseFlow.WorkflowId.ToString(),
                             ["Category"] = baseFlow.Category.ToString(),
+                            ["WorkflowCategory"] = baseFlow.Category.ToString(),
                             ["BaselineActivated"] = baseFlow.IsActivated.ToString(),
                             ["BaselineEnvironment"] = baseline.Environment.DisplayName,
                             ["EnvironmentUrl"] = baseline.Environment.EnvironmentUrl.ToString()
@@ -64,6 +65,7 @@ internal static class WorkflowDriftAnalyzer
                         {
                             ["WorkflowName"] = baseFlow.Name,
                             ["WorkflowId"] = baseFlow.WorkflowId.ToString(),
+                            ["Category"] = baseFlow.Category.ToString(),
                             ["BaselineActivated"] = baseFlow.IsActivated.ToString(),
                             ["TargetActivated"] = targetFlow.IsActivated.ToString(),
                             ["EnvironmentUrl"] = baseline.Environment.EnvironmentUrl.ToString()
@@ -88,6 +90,7 @@ internal static class WorkflowDriftAnalyzer
                         {
                             ["WorkflowName"] = baseFlow.Name,
                             ["WorkflowId"] = baseFlow.WorkflowId.ToString(),
+                            ["Category"] = baseFlow.Category.ToString(),
                             ["BaselineMode"] = baseFlow.Mode.ToString(),
                             ["TargetMode"] = targetFlow.Mode.ToString(),
                             ["EnvironmentUrl"] = baseline.Environment.EnvironmentUrl.ToString()
@@ -113,6 +116,7 @@ internal static class WorkflowDriftAnalyzer
                         {
                             ["WorkflowName"] = baseFlow.Name,
                             ["WorkflowId"] = baseFlow.WorkflowId.ToString(),
+                            ["Category"] = baseFlow.Category.ToString(),
                             ["BaselineTriggerCreate"] = baseFlow.TriggerOnCreate ?? "(null)",
                             ["TargetTriggerCreate"] = targetFlow.TriggerOnCreate ?? "(null)",
                             ["BaselineTriggerUpdate"] = baseFlow.TriggerOnUpdate ?? "(null)",

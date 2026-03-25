@@ -62,6 +62,12 @@ var aiInstructionsOption = new Option<string?>("--ai-instructions")
     Description = "Path to a Markdown file with custom AI instructions. Enables optional AI enrichment."
 };
 
+var comparisonModeOption = new Option<string>("--comparison-mode", ["-m"])
+{
+    Description = "Comparison mode: Baseline (first env is baseline) or AllToAll (every pair compared). Default: Baseline.",
+    DefaultValueFactory = _ => "Baseline"
+};
+
 // ── Scan command ────────────────────────────────────────────
 var scanCommand = new Command("scan", "Scan and compare Dataverse environments.")
 {
@@ -73,7 +79,8 @@ var scanCommand = new Command("scan", "Scan and compare Dataverse environments."
     clientIdOption,
     clientSecretOption,
     outputOption,
-    aiInstructionsOption
+    aiInstructionsOption,
+    comparisonModeOption
 };
 
 scanCommand.SetAction(async (ParseResult parseResult, CancellationToken ct) =>
@@ -87,6 +94,7 @@ scanCommand.SetAction(async (ParseResult parseResult, CancellationToken ct) =>
     var secret = parseResult.GetValue(clientSecretOption);
     var output = parseResult.GetValue(outputOption) ?? "./output";
     var aiInstructionsPath = parseResult.GetValue(aiInstructionsOption);
+    var comparisonModeStr = parseResult.GetValue(comparisonModeOption) ?? "Baseline";
 
     if (envUrls.Length == 0)
     {
@@ -97,6 +105,12 @@ scanCommand.SetAction(async (ParseResult parseResult, CancellationToken ct) =>
     if (!Enum.TryParse<AuthMethod>(auth, ignoreCase: true, out var authMethod))
     {
         Console.Error.WriteLine($"Error: unknown auth method '{auth}'. Valid: Default, ClientSecret, Interactive, DeviceCode.");
+        return ExitCodes.ConfigurationError;
+    }
+
+    if (!Enum.TryParse<ComparisonMode>(comparisonModeStr, ignoreCase: true, out var comparisonMode))
+    {
+        Console.Error.WriteLine($"Error: unknown comparison mode '{comparisonModeStr}'. Valid: Baseline, AllToAll.");
         return ExitCodes.ConfigurationError;
     }
 
@@ -162,7 +176,7 @@ scanCommand.SetAction(async (ParseResult parseResult, CancellationToken ct) =>
 
     try
     {
-        return await scanCmd.ExecuteAsync(envArgs, output, aiInstructionsPath, ct);
+        return await scanCmd.ExecuteAsync(envArgs, output, aiInstructionsPath, comparisonMode, ct);
     }
     catch (OperationCanceledException)
     {
