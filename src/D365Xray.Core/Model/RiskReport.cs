@@ -40,6 +40,21 @@ public sealed record RiskReport
     public IReadOnlyList<EnvironmentSummary> EnvironmentSummaries { get; init; } = [];
 
     /// <summary>
+    /// Per-environment solution breakdowns with Microsoft/custom classification.
+    /// </summary>
+    public IReadOnlyList<SolutionInventory> SolutionInventories { get; init; } = [];
+
+    /// <summary>
+    /// Per-environment custom artifact drill-downs (non-Microsoft items only).
+    /// </summary>
+    public IReadOnlyList<CustomArtifactSummary> CustomArtifactSummaries { get; init; } = [];
+
+    /// <summary>
+    /// Per-environment organization settings for governance audit.
+    /// </summary>
+    public IReadOnlyList<EnvironmentSettingsSnapshot> SettingsSnapshots { get; init; } = [];
+
+    /// <summary>
     /// Optional AI-generated enrichment. Null when AI was not invoked.
     /// When present, always carries explicit <see cref="AiProvenance"/>.
     /// </summary>

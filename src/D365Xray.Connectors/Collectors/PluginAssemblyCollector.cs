@@ -14,7 +14,7 @@ internal static class PluginAssemblyCollector
     private const string _entitySet = "pluginassemblies";
     private const string _queryOptions =
         "$select=pluginassemblyid,name,version,publickeytoken,isolationmode,sourcetype,modifiedon" +
-        "&$filter=ishidden eq false" +
+        "&$filter=ishidden/Value eq false" +
         "&$orderby=name asc";
 
     public static async Task<IReadOnlyList<PluginAssembly>> CollectAsync(

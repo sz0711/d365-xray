@@ -293,11 +293,13 @@ internal static class SingleEnvironmentAnalyzer
 
     /// <summary>
     /// Flags connection references that have no connection ID bound (orphaned).
+    /// Excludes Microsoft first-party connection references (msdyn_, mscrm_) which
+    /// are system-managed and typically don't require user-bound connections.
     /// </summary>
     private static IEnumerable<Finding> DetectOrphanedConnectionReferences(EnvironmentSnapshot snapshot)
     {
         foreach (var cr in snapshot.ConnectionReferences
-            .Where(c => string.IsNullOrEmpty(c.ConnectionId))
+            .Where(c => string.IsNullOrEmpty(c.ConnectionId) && !IsMicrosoftConnectionReference(c))
             .OrderBy(c => c.ConnectionReferenceLogicalName, StringComparer.OrdinalIgnoreCase))
         {
             yield return new Finding
@@ -319,5 +321,12 @@ internal static class SingleEnvironmentAnalyzer
                 }
             };
         }
+    }
+
+    private static bool IsMicrosoftConnectionReference(ConnectionReference cr)
+    {
+        var name = cr.ConnectionReferenceLogicalName;
+        return name.StartsWith("msdyn_", StringComparison.OrdinalIgnoreCase)
+            || name.StartsWith("mscrm_", StringComparison.OrdinalIgnoreCase);
     }
 }

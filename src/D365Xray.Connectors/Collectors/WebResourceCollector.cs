@@ -13,7 +13,7 @@ internal static class WebResourceCollector
     private const string _entitySet = "webresourceset";
     private const string _queryOptions =
         "$select=webresourceid,name,displayname,webresourcetype,ismanaged,iscustomizable,modifiedon" +
-        "&$filter=ishidden eq false" +
+        "&$filter=ishidden/Value eq false" +
         "&$orderby=name asc";
 
     public static async Task<IReadOnlyList<WebResource>> CollectAsync(

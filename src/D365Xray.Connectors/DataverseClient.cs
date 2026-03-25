@@ -96,6 +96,13 @@ internal sealed class DataverseClient : IDataverseClient
                 continue;
             }
 
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
+                _logger.LogWarning("HTTP {StatusCode} for {Url}: {Body}",
+                    (int)response.StatusCode, url, errorBody.Length > 500 ? errorBody[..500] : errorBody);
+            }
+
             response.EnsureSuccessStatusCode();
 
             var stream = await response.Content.ReadAsStreamAsync(cancellationToken);

@@ -12,8 +12,8 @@ internal static class AppModuleCollector
 {
     private const string EntitySet = "appmodules";
     private const string QueryOptions =
-        "$select=appmoduleid,name,uniquename,description,appversion," +
-        "ismanaged,isdefault,statecode,clienttype,webresourceid,modifiedon" +
+        "$select=appmoduleid,name,uniquename,description," +
+        "ismanaged,statecode,clienttype,modifiedon" +
         "&$orderby=name asc";
 
     public static async Task<IReadOnlyList<AppModule>> CollectAsync(
@@ -58,12 +58,12 @@ internal static class AppModuleCollector
             Name = JsonHelper.GetString(item, "name") ?? "unknown",
             UniqueName = JsonHelper.GetString(item, "uniquename") ?? "unknown",
             Description = JsonHelper.GetString(item, "description"),
-            AppVersion = JsonHelper.GetString(item, "appversion"),
+            AppVersion = null,
             IsManaged = JsonHelper.GetBool(item, "ismanaged"),
-            IsDefault = JsonHelper.GetBool(item, "isdefault"),
+            IsDefault = false,
             IsPublished = isPublished,
             ClientType = JsonHelper.GetString(item, "clienttype"),
-            WebResourceId = JsonHelper.GetString(item, "webresourceid"),
+            WebResourceId = null,
             ModifiedOn = JsonHelper.GetDateTimeOffset(item, "modifiedon")
         };
     }

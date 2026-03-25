@@ -14,9 +14,7 @@ internal static class DependencyCollector
     private const string EntitySet = "dependencies";
     private const string QueryOptions =
         "$select=requiredcomponentobjectid,requiredcomponenttype," +
-        "_requiredcomponentbasesolutionid_value," +
         "dependentcomponentobjectid,dependentcomponenttype," +
-        "_dependentcomponentbasesolutionid_value," +
         "dependencytype";
 
     public static async Task<IReadOnlyList<SolutionDependency>> CollectAsync(

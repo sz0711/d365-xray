@@ -65,6 +65,35 @@ internal sealed class MarkdownReportExporter
             sb.AppendLine();
         }
 
+        // Solution Breakdown
+        if (report.SolutionInventories.Count > 0)
+        {
+            foreach (var inv in report.SolutionInventories)
+            {
+                var custom = inv.Solutions.Where(s => !s.IsMicrosoft).ToList();
+                var msft = inv.Solutions.Where(s => s.IsMicrosoft).ToList();
+
+                if (custom.Count > 0)
+                {
+                    sb.AppendLine(CultureInfo.InvariantCulture,
+                        $"### Custom Solutions ({custom.Count})");
+                    sb.AppendLine();
+                    sb.AppendLine("| Solution | Publisher | Version | Managed | Components | Entities | Forms | Views | Workflows | Plugins |");
+                    sb.AppendLine("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |");
+                    foreach (var sol in custom)
+                    {
+                        sb.AppendLine(CultureInfo.InvariantCulture,
+                            $"| {sol.DisplayName} | {sol.PublisherName} | {sol.Version} | {(sol.IsManaged ? "Yes" : "No")} | {sol.TotalComponents} | {sol.Entities} | {sol.Forms} | {sol.Views} | {sol.Workflows} | {sol.PluginAssemblies} |");
+                    }
+                    sb.AppendLine();
+                }
+
+                sb.AppendLine(CultureInfo.InvariantCulture,
+                    $"*{msft.Count} Microsoft solution(s) not shown.*");
+                sb.AppendLine();
+            }
+        }
+
         // Executive Summary
         sb.AppendLine("## Executive Summary");
         sb.AppendLine();

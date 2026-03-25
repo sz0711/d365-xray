@@ -14,7 +14,7 @@ internal static class LayerCollector
     private const string EntitySet = "msdyn_componentlayers";
     private const string QueryOptions =
         "$select=msdyn_componentid,msdyn_solutioncomponentname,msdyn_name," +
-        "msdyn_order,msdyn_publishername,msdyn_solutionname,createdon";
+        "msdyn_order,msdyn_publishername,msdyn_solutionname";
 
     public static async Task<IReadOnlyList<ComponentLayer>> CollectAsync(
         IDataverseClient client,
@@ -77,8 +77,7 @@ internal static class LayerCollector
             SolutionDisplayName = displayName,
             Order = JsonHelper.GetInt(item, "msdyn_order"),
             IsManaged = isManaged,
-            PublisherName = JsonHelper.GetString(item, "msdyn_publishername"),
-            CreatedOn = JsonHelper.GetDateTimeOffset(item, "createdon")
+            PublisherName = JsonHelper.GetString(item, "msdyn_publishername")
         };
     }
 

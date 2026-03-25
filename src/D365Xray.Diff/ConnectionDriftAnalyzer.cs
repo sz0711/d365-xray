@@ -26,17 +26,26 @@ internal static class ConnectionDriftAnalyzer
         }
     }
 
+    private static readonly string[] MicrosoftPrefixes = ["msdyn_", "mscrm_"];
+
+    private static bool IsMicrosoftConnectionReference(string logicalName)
+    {
+        return MicrosoftPrefixes.Any(p => logicalName.StartsWith(p, StringComparison.OrdinalIgnoreCase));
+    }
+
     private static IEnumerable<Finding> AnalyzeConnectionReferences(
         IReadOnlyList<EnvironmentSnapshot> snapshots)
     {
         var baseline = snapshots[0];
         var baselineRefs = baseline.ConnectionReferences
+            .Where(c => !IsMicrosoftConnectionReference(c.ConnectionReferenceLogicalName))
             .ToDictionary(c => c.ConnectionReferenceLogicalName, StringComparer.OrdinalIgnoreCase);
 
         for (var i = 1; i < snapshots.Count; i++)
         {
             var target = snapshots[i];
             var targetRefs = target.ConnectionReferences
+                .Where(c => !IsMicrosoftConnectionReference(c.ConnectionReferenceLogicalName))
                 .ToDictionary(c => c.ConnectionReferenceLogicalName, StringComparer.OrdinalIgnoreCase);
 
             foreach (var (key, baseRef) in baselineRefs.OrderBy(k => k.Key, StringComparer.OrdinalIgnoreCase))

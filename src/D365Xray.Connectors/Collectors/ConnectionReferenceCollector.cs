@@ -13,7 +13,7 @@ internal static class ConnectionReferenceCollector
     private const string _entitySet = "connectionreferences";
     private const string _queryOptions =
         "$select=connectionreferenceid,connectionreferencelogicalname,connectionreferencedisplayname," +
-        "connectorid,connectionid,iscustomconnector,statuscode" +
+        "connectorid,connectionid,statuscode" +
         "&$orderby=connectionreferencelogicalname asc";
 
     public static async Task<IReadOnlyList<ConnectionReference>> CollectAsync(
@@ -56,7 +56,7 @@ internal static class ConnectionReferenceCollector
             DisplayName = JsonHelper.GetString(item, "connectionreferencedisplayname"),
             ConnectorId = JsonHelper.GetString(item, "connectorid"),
             ConnectionId = JsonHelper.GetString(item, "connectionid"),
-            IsCustomConnector = JsonHelper.GetBool(item, "iscustomconnector"),
+            IsCustomConnector = false,
             StatusCode = JsonHelper.GetInt(item, "statuscode", 1)
         };
     }

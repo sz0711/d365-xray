@@ -17,7 +17,7 @@ internal static class SdkStepCollector
         "&$expand=sdkmessagefilterid($select=primaryobjecttypecode)," +
         "sdkmessageid($select=name)," +
         "plugintypeid($select=name,assemblyname)" +
-        "&$filter=ishidden eq false" +
+        "&$filter=ishidden/Value eq false" +
         "&$orderby=name asc";
 
     public static async Task<IReadOnlyList<SdkStep>> CollectAsync(

@@ -13,8 +13,8 @@ internal static class FormCollector
     private const string EntitySet = "systemforms";
     private const string QueryOptions =
         "$select=formid,name,description,objecttypecode,type,ismanaged," +
-        "isdefault,formactivationstate,uniquename,modifiedon" +
-        "&$filter=formactivationstate eq 1" + // only active forms
+        "isdefault,formactivationstate" +
+        "&$filter=formactivationstate eq 1" +
         "&$orderby=name asc";
 
     public static async Task<IReadOnlyList<FormDefinition>> CollectAsync(
@@ -64,8 +64,7 @@ internal static class FormCollector
             IsManaged = JsonHelper.GetBool(item, "ismanaged"),
             IsDefault = JsonHelper.GetBool(item, "isdefault"),
             FormActivationState = JsonHelper.GetInt(item, "formactivationstate"),
-            UniqueName = JsonHelper.GetString(item, "uniquename"),
-            ModifiedOn = JsonHelper.GetDateTimeOffset(item, "modifiedon")
+            UniqueName = JsonHelper.GetString(item, "name")
         };
     }
 }

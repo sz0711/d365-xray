@@ -107,6 +107,24 @@ internal sealed class ScanCommand
         }).ToList();
         riskReport = riskReport with { EnvironmentSummaries = summaries };
 
+        // Build solution inventories and custom artifact drill-downs
+        var solutionInventories = snapshots.Select(BuildSolutionInventory).ToList();
+        var customArtifacts = snapshots.Select(BuildCustomArtifactSummary).ToList();
+        var settingsSnapshots = snapshots.Select(s => new EnvironmentSettingsSnapshot
+        {
+            EnvironmentDisplayName = s.Environment.DisplayName,
+            DataverseVersion = s.Environment.DataverseVersion,
+            OrganizationId = s.Environment.OrganizationId,
+            ScanDuration = s.Metadata.CapturedDuration,
+            Settings = s.Settings
+        }).ToList();
+        riskReport = riskReport with
+        {
+            SolutionInventories = solutionInventories,
+            CustomArtifactSummaries = customArtifacts,
+            SettingsSnapshots = settingsSnapshots
+        };
+
         _logger.LogInformation(
             "Risk assessment: {Level} (score {Score}/100).",
             riskReport.OverallRiskLevel,
@@ -145,6 +163,185 @@ internal sealed class ScanCommand
         return riskReport.OverallRiskLevel == RiskLevel.Critical
             ? ExitCodes.CriticalRisk
             : ExitCodes.Success;
+    }
+
+    // ── Microsoft publisher detection ───────────────────────
+
+    private static readonly HashSet<string> MicrosoftPublishers = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "MicrosoftCorporation", "microsoftcorporation", "Microsoft",
+        "Microsoftd365accelerator", "MicrosoftPowerCAT", "MicrosoftDataverse",
+        "Cds", "cds", "CdsCore", "dynamics365customerengagement"
+    };
+
+    private static readonly string[] MicrosoftSolutionPrefixes =
+        ["msdyn", "mscrm", "Mscrm", "Dynamics365", "PowerApps", "MicrosoftDynamics",
+         "msa_", "GlobalDiscovery", "AdminSettingsProvider"];
+
+    private static bool IsMicrosoftSolution(Solution solution)
+    {
+        if (MicrosoftPublishers.Contains(solution.Publisher.UniqueName))
+        {
+            return true;
+        }
+
+        foreach (var prefix in MicrosoftSolutionPrefixes)
+        {
+            if (solution.UniqueName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        // System solutions
+        return solution.UniqueName is "Active" or "Default" or "System"
+            or "ActivityFeeds" or "ActivityFeedsCore";
+    }
+
+    private static bool IsMicrosoftPlugin(string name) =>
+        name.StartsWith("Microsoft.", StringComparison.OrdinalIgnoreCase)
+        || name.StartsWith("MicrosoftPower", StringComparison.OrdinalIgnoreCase);
+
+    private static readonly string[] MicrosoftAppModulePrefixes =
+        ["msdyn_", "mspp_", "PowerPlatform", "Dynamics365"];
+
+    private static bool IsMicrosoftAppModule(string uniqueName)
+    {
+        foreach (var prefix in MicrosoftAppModulePrefixes)
+        {
+            if (uniqueName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static readonly string[] MicrosoftWebResourcePrefixes =
+        ["cc_shared/", "msdyn_", "mscrm/", "mspp_"];
+
+    private static bool IsMicrosoftWebResource(string name)
+    {
+        foreach (var prefix in MicrosoftWebResourcePrefixes)
+        {
+            if (name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    // ── Solution inventory builder ──────────────────────────
+
+    private static SolutionInventory BuildSolutionInventory(EnvironmentSnapshot snapshot)
+    {
+        // Build component-type counts per solution from SolutionComponents
+        var componentsBySolution = snapshot.Components
+            .GroupBy(c => c.SolutionUniqueName, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
+
+        var breakdowns = snapshot.Solutions
+            .OrderByDescending(s => componentsBySolution.GetValueOrDefault(s.UniqueName)?.Count ?? 0)
+            .Select(sol =>
+            {
+                var components = componentsBySolution.GetValueOrDefault(sol.UniqueName) ?? [];
+                var byType = components.GroupBy(c => c.ComponentType)
+                    .ToDictionary(g => g.Key, g => g.Count());
+
+                return new SolutionBreakdown
+                {
+                    UniqueName = sol.UniqueName,
+                    DisplayName = sol.DisplayName,
+                    Version = sol.Version,
+                    PublisherName = sol.Publisher.DisplayName,
+                    IsManaged = sol.IsManaged,
+                    IsMicrosoft = IsMicrosoftSolution(sol),
+                    TotalComponents = components.Count,
+                    Entities = byType.GetValueOrDefault(ComponentType.Entity),
+                    Forms = byType.GetValueOrDefault(ComponentType.Form),
+                    Views = byType.GetValueOrDefault(ComponentType.SavedQuery),
+                    Workflows = byType.GetValueOrDefault(ComponentType.Workflow),
+                    PluginAssemblies = byType.GetValueOrDefault(ComponentType.PluginAssembly),
+                    WebResources = byType.GetValueOrDefault(ComponentType.WebResource),
+                    Roles = byType.GetValueOrDefault(ComponentType.Role),
+                    Charts = byType.GetValueOrDefault(ComponentType.SavedQueryVisualization),
+                    SdkSteps = byType.GetValueOrDefault(ComponentType.SdkMessageProcessingStep),
+                    OptionSets = byType.GetValueOrDefault(ComponentType.OptionSet),
+                    OtherComponents = components.Count
+                        - byType.GetValueOrDefault(ComponentType.Entity)
+                        - byType.GetValueOrDefault(ComponentType.Form)
+                        - byType.GetValueOrDefault(ComponentType.SavedQuery)
+                        - byType.GetValueOrDefault(ComponentType.Workflow)
+                        - byType.GetValueOrDefault(ComponentType.PluginAssembly)
+                        - byType.GetValueOrDefault(ComponentType.WebResource)
+                        - byType.GetValueOrDefault(ComponentType.Role)
+                        - byType.GetValueOrDefault(ComponentType.SavedQueryVisualization)
+                        - byType.GetValueOrDefault(ComponentType.SdkMessageProcessingStep)
+                        - byType.GetValueOrDefault(ComponentType.OptionSet)
+                };
+            })
+            .ToList();
+
+        return new SolutionInventory
+        {
+            EnvironmentDisplayName = snapshot.Environment.DisplayName,
+            Solutions = breakdowns
+        };
+    }
+
+    // ── Custom artifact summary builder ─────────────────────
+
+    private static CustomArtifactSummary BuildCustomArtifactSummary(EnvironmentSnapshot snapshot)
+    {
+        return new CustomArtifactSummary
+        {
+            EnvironmentDisplayName = snapshot.Environment.DisplayName,
+            Workflows = snapshot.Workflows
+                .Where(w => !w.IsManaged)
+                .OrderBy(w => w.Name, StringComparer.OrdinalIgnoreCase)
+                .Select(w => new WorkflowSummaryItem(w.Name, w.Category.ToString(), w.IsActivated, w.IsManaged))
+                .ToList(),
+            Plugins = snapshot.PluginAssemblies
+                .Where(p => !IsMicrosoftPlugin(p.Name))
+                .OrderBy(p => p.Name, StringComparer.OrdinalIgnoreCase)
+                .Select(p => new PluginSummaryItem(p.Name, p.Version, p.IsolationMode.ToString()))
+                .ToList(),
+            Forms = snapshot.Forms
+                .Where(f => !f.IsManaged)
+                .OrderBy(f => f.EntityLogicalName, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(f => f.Name, StringComparer.OrdinalIgnoreCase)
+                .Select(f => new FormSummaryItem(f.Name, f.EntityLogicalName, f.FormType.ToString(), f.IsManaged))
+                .ToList(),
+            Entities = snapshot.EntityMetadata
+                .Where(e => !e.IsManaged && e.IsCustomEntity)
+                .OrderBy(e => e.LogicalName, StringComparer.OrdinalIgnoreCase)
+                .Select(e => new EntitySummaryItem(e.LogicalName, e.DisplayName, e.IsManaged, e.IsCustomEntity))
+                .ToList(),
+            AppModules = snapshot.AppModules
+                .Where(a => !IsMicrosoftAppModule(a.UniqueName))
+                .OrderBy(a => a.Name, StringComparer.OrdinalIgnoreCase)
+                .Select(a => new AppModuleSummaryItem(a.Name, a.UniqueName, a.IsPublished, a.IsManaged))
+                .ToList(),
+            ConnectionReferences = snapshot.ConnectionReferences
+                .Where(c => !c.ConnectionReferenceLogicalName.StartsWith("msdyn_", StringComparison.OrdinalIgnoreCase)
+                          && !c.ConnectionReferenceLogicalName.StartsWith("mscrm_", StringComparison.OrdinalIgnoreCase))
+                .OrderBy(c => c.ConnectionReferenceLogicalName, StringComparer.OrdinalIgnoreCase)
+                .Select(c => new ConnectionReferenceSummaryItem(
+                    c.ConnectionReferenceLogicalName,
+                    c.DisplayName,
+                    c.ConnectorId,
+                    !string.IsNullOrEmpty(c.ConnectionId)))
+                .ToList(),
+            WebResources = snapshot.WebResources
+                .Where(w => !w.IsManaged && !IsMicrosoftWebResource(w.Name))
+                .OrderBy(w => w.Name, StringComparer.OrdinalIgnoreCase)
+                .Take(100) // Cap to avoid gigantic reports
+                .Select(w => new WebResourceSummaryItem(w.Name, w.WebResourceType.ToString(), w.IsManaged))
+                .ToList()
+        };
     }
 }
 

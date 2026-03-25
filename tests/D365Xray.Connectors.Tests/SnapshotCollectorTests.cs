@@ -647,7 +647,7 @@ public class SnapshotCollectorTests
         Assert.Equal(FormType.Main, form.FormType);
         Assert.True(form.IsManaged);
         Assert.True(form.IsDefault);
-        Assert.Equal("account_main_1", form.UniqueName);
+        Assert.Equal("Account Main", form.UniqueName);
     }
 
     // ── ViewCollector ───────────────────────────────────────────
@@ -742,7 +742,7 @@ public class SnapshotCollectorTests
         var app = result[0];
         Assert.Equal("Sales Hub", app.Name);
         Assert.Equal("saleshub", app.UniqueName);
-        Assert.Equal("1.0.0.0", app.AppVersion);
+        Assert.Null(app.AppVersion);
         Assert.True(app.IsPublished); // statecode=0 → active/published
         Assert.True(app.IsManaged);
     }

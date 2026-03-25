@@ -28,7 +28,7 @@ internal static class SettingsCollector
         // Session
         new("sessiontimeoutenabled", "Session", "Session timeout enforcement enabled"),
         new("sessiontimeoutinmins", "Session", "Session timeout in minutes"),
-        new("inabortivetimeoutinmins", "Session", "Inactivity timeout in minutes"),
+        new("inactivitytimeoutinmins", "Session", "Inactivity timeout in minutes"),
 
         // Localization
         new("languagecode", "Localization", "Base language code"),
@@ -38,12 +38,8 @@ internal static class SettingsCollector
         new("isemailmonitoringallowed", "Email", "Server-side sync / email monitoring allowed"),
         new("enablebingmapsintegration", "Integration", "Bing Maps integration enabled"),
 
-        // Storage & Features
-        new("isexternalfilesstorageenabled", "Storage", "External file storage enabled (e.g. Azure Blob)"),
-        new("isactioncardenabled", "Features", "Action cards enabled"),
-
         // Advanced
-        new("issabortivetimeoutenabled", "Advanced", "Session abort timeout enforcement enabled"),
+        new("allowlegacyclientexperience", "Advanced", "Allow legacy client experience"),
         new("sharepointdeploymenttype", "Integration", "SharePoint deployment type"),
     ];
 

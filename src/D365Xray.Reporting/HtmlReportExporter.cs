@@ -45,7 +45,7 @@ internal sealed class HtmlReportExporter
         sb.AppendLine("<div>");
         sb.AppendLine("<h1>D365 X-Ray Risk Report</h1>");
         sb.AppendLine(CultureInfo.InvariantCulture,
-            $"<p class=\"meta\">Captured {Encode(report.Metadata.CapturedAtUtc.ToString("u"))} &middot; Tool v{Encode(report.Metadata.ToolVersion)} &middot; <span class=\"mode-badge\">{Encode(report.ComparisonMode.ToString())}</span></p>");
+            $"<p class=\"meta\">Captured {Encode(report.Metadata.CapturedAtUtc.ToString("u"))} &middot; Tool v{Encode(report.Metadata.ToolVersion)} &middot; <span class=\"mode-badge\">{Encode(report.ComparisonMode.ToString())}</span>{BuildVersionBadge(report)}</p>");
         sb.AppendLine("</div>");
         sb.AppendLine("<button id=\"theme-toggle\" class=\"theme-btn\" title=\"Toggle dark mode\" aria-label=\"Toggle dark mode\">&#9790;</button>");
         sb.AppendLine("</div>");
@@ -54,6 +54,9 @@ internal sealed class HtmlReportExporter
 
         // Dashboard row: SVG gauge + KPI cards
         AppendDashboard(sb, report);
+
+        // Executive Summary (auto-generated insights)
+        AppendExecutiveSummary(sb, report);
 
         // Environment inventory
         if (report.EnvironmentSummaries.Count > 0)
@@ -64,6 +67,15 @@ internal sealed class HtmlReportExporter
         {
             AppendEnvironmentsList(sb, report);
         }
+
+        // Solution breakdown (custom vs Microsoft)
+        AppendSolutionBreakdown(sb, report);
+
+        // Custom artifact drill-downs
+        AppendCustomArtifacts(sb, report);
+
+        // Organization Settings audit
+        AppendSettingsAudit(sb, report);
 
         // Severity breakdown as bar chart
         AppendSeveritySection(sb, report);
@@ -132,6 +144,12 @@ internal sealed class HtmlReportExporter
         AppendKpiCard(sb, "Critical", critical.ToString(CultureInfo.InvariantCulture), "critical");
         AppendKpiCard(sb, "High", high.ToString(CultureInfo.InvariantCulture), "high");
         AppendKpiCard(sb, "Environments", report.ComparedEnvironments.Count.ToString(CultureInfo.InvariantCulture), "total");
+
+        // Architect-relevant KPIs
+        var customSolCount = report.SolutionInventories.SelectMany(i => i.Solutions).Count(s => !s.IsMicrosoft);
+        var unmanagedCount = report.SolutionInventories.SelectMany(i => i.Solutions).Count(s => !s.IsManaged && !s.IsMicrosoft);
+        AppendKpiCard(sb, "Custom Solutions", customSolCount.ToString(CultureInfo.InvariantCulture), "total");
+        AppendKpiCard(sb, "Unmanaged", unmanagedCount.ToString(CultureInfo.InvariantCulture), unmanagedCount > 0 ? "high" : "total");
         sb.AppendLine("</div>");
 
         sb.AppendLine("</section>");
@@ -198,6 +216,371 @@ internal sealed class HtmlReportExporter
         sb.AppendLine("</section>");
     }
 
+    // ── Solution Breakdown ──────────────────────────────────
+
+    private static void AppendSolutionBreakdown(StringBuilder sb, RiskReport report)
+    {
+        if (report.SolutionInventories.Count == 0)
+        {
+            return;
+        }
+
+        sb.AppendLine("<section class=\"solution-breakdown\">");
+        sb.AppendLine("<h2>Solution Breakdown</h2>");
+        sb.AppendLine("<p class=\"meta\">Solutions grouped by origin. <strong>Custom</strong> solutions are highlighted.</p>");
+
+        foreach (var inv in report.SolutionInventories)
+        {
+            var custom = inv.Solutions.Where(s => !s.IsMicrosoft).ToList();
+            var msft = inv.Solutions.Where(s => s.IsMicrosoft).ToList();
+
+            // Custom solutions first
+            if (custom.Count > 0)
+            {
+                sb.AppendLine("<details open>");
+                sb.AppendLine(CultureInfo.InvariantCulture,
+                    $"<summary><h3>Custom Solutions ({custom.Count})</h3></summary>");
+                AppendSolutionTable(sb, custom);
+                sb.AppendLine("</details>");
+            }
+
+            // Microsoft solutions (collapsed)
+            if (msft.Count > 0)
+            {
+                sb.AppendLine("<details>");
+                sb.AppendLine(CultureInfo.InvariantCulture,
+                    $"<summary><h3>Microsoft Solutions ({msft.Count})</h3></summary>");
+                AppendSolutionTable(sb, msft);
+                sb.AppendLine("</details>");
+            }
+        }
+
+        sb.AppendLine("</section>");
+    }
+
+    private static void AppendSolutionTable(StringBuilder sb, List<SolutionBreakdown> solutions)
+    {
+        sb.AppendLine("<div class=\"table-scroll\">");
+        sb.AppendLine("<table><thead><tr>");
+        sb.AppendLine("<th>Solution</th><th>Publisher</th><th>Version</th><th>Managed</th><th>Total</th><th>Entities</th><th>Forms</th><th>Views</th><th>Workflows</th><th>Plugins</th><th>Web Res.</th><th>Roles</th><th>Other</th>");
+        sb.AppendLine("</tr></thead><tbody>");
+
+        foreach (var sol in solutions)
+        {
+            sb.Append(CultureInfo.InvariantCulture,
+                $"<tr><td title=\"{Encode(sol.UniqueName)}\"><strong>{Encode(sol.DisplayName)}</strong></td>");
+            sb.Append(CultureInfo.InvariantCulture, $"<td>{Encode(sol.PublisherName)}</td>");
+            sb.Append(CultureInfo.InvariantCulture, $"<td>{Encode(sol.Version)}</td>");
+            sb.Append(CultureInfo.InvariantCulture, $"<td>{(sol.IsManaged ? "Yes" : "No")}</td>");
+            sb.Append(CultureInfo.InvariantCulture, $"<td><strong>{sol.TotalComponents}</strong></td>");
+            sb.Append(CultureInfo.InvariantCulture, $"<td>{sol.Entities}</td>");
+            sb.Append(CultureInfo.InvariantCulture, $"<td>{sol.Forms}</td>");
+            sb.Append(CultureInfo.InvariantCulture, $"<td>{sol.Views}</td>");
+            sb.Append(CultureInfo.InvariantCulture, $"<td>{sol.Workflows}</td>");
+            sb.Append(CultureInfo.InvariantCulture, $"<td>{sol.PluginAssemblies}</td>");
+            sb.Append(CultureInfo.InvariantCulture, $"<td>{sol.WebResources}</td>");
+            sb.Append(CultureInfo.InvariantCulture, $"<td>{sol.Roles}</td>");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"<td>{sol.OtherComponents}</td></tr>");
+        }
+
+        sb.AppendLine("</tbody></table>");
+        sb.AppendLine("</div>");
+    }
+
+    // ── Custom Artifacts ────────────────────────────────────
+
+    private static void AppendCustomArtifacts(StringBuilder sb, RiskReport report)
+    {
+        if (report.CustomArtifactSummaries.Count == 0)
+        {
+            return;
+        }
+
+        sb.AppendLine("<section class=\"custom-artifacts\">");
+        sb.AppendLine("<h2>Custom Artifact Details</h2>");
+        sb.AppendLine("<p class=\"meta\">Non-Microsoft artifacts found in the environment. Use these details to understand what custom components exist.</p>");
+
+        foreach (var summary in report.CustomArtifactSummaries)
+        {
+            // App Modules
+            if (summary.AppModules.Count > 0)
+            {
+                sb.AppendLine("<details open>");
+                sb.AppendLine(CultureInfo.InvariantCulture,
+                    $"<summary><h3>App Modules ({summary.AppModules.Count})</h3></summary>");
+                sb.AppendLine("<div class=\"table-scroll\"><table><thead><tr><th>Name</th><th>Unique Name</th><th>Published</th><th>Managed</th></tr></thead><tbody>");
+                foreach (var app in summary.AppModules)
+                {
+                    sb.AppendLine(CultureInfo.InvariantCulture,
+                        $"<tr><td>{Encode(app.Name)}</td><td>{Encode(app.UniqueName)}</td><td>{(app.IsPublished ? "Yes" : "No")}</td><td>{(app.IsManaged ? "Yes" : "No")}</td></tr>");
+                }
+                sb.AppendLine("</tbody></table></div></details>");
+            }
+
+            // Connection References (non-Microsoft)
+            if (summary.ConnectionReferences.Count > 0)
+            {
+                sb.AppendLine("<details open>");
+                sb.AppendLine(CultureInfo.InvariantCulture,
+                    $"<summary><h3>Connection References ({summary.ConnectionReferences.Count})</h3></summary>");
+                sb.AppendLine("<div class=\"table-scroll\"><table><thead><tr><th>Logical Name</th><th>Display Name</th><th>Connector</th><th>Connected</th></tr></thead><tbody>");
+                foreach (var cr in summary.ConnectionReferences)
+                {
+                    var connected = cr.HasConnection ? "<span class=\"tag low\">Yes</span>" : "<span class=\"tag high\">No</span>";
+                    sb.AppendLine(CultureInfo.InvariantCulture,
+                        $"<tr><td>{Encode(cr.LogicalName)}</td><td>{Encode(cr.DisplayName ?? "")}</td><td>{Encode(cr.ConnectorId ?? "")}</td><td>{connected}</td></tr>");
+                }
+                sb.AppendLine("</tbody></table></div></details>");
+            }
+
+            // Workflows (unmanaged)
+            if (summary.Workflows.Count > 0)
+            {
+                sb.AppendLine("<details>");
+                sb.AppendLine(CultureInfo.InvariantCulture,
+                    $"<summary><h3>Custom Workflows &amp; Flows ({summary.Workflows.Count})</h3></summary>");
+                sb.AppendLine("<div class=\"table-scroll\"><table><thead><tr><th>Name</th><th>Category</th><th>Active</th></tr></thead><tbody>");
+                foreach (var wf in summary.Workflows)
+                {
+                    var active = wf.IsActivated ? "<span class=\"tag low\">Yes</span>" : "<span class=\"tag medium\">No</span>";
+                    sb.AppendLine(CultureInfo.InvariantCulture,
+                        $"<tr><td>{Encode(wf.Name)}</td><td>{Encode(wf.Category)}</td><td>{active}</td></tr>");
+                }
+                sb.AppendLine("</tbody></table></div></details>");
+            }
+
+            // Plugins
+            if (summary.Plugins.Count > 0)
+            {
+                sb.AppendLine("<details>");
+                sb.AppendLine(CultureInfo.InvariantCulture,
+                    $"<summary><h3>Plugin Assemblies ({summary.Plugins.Count})</h3></summary>");
+                sb.AppendLine("<div class=\"table-scroll\"><table><thead><tr><th>Name</th><th>Version</th><th>Isolation</th></tr></thead><tbody>");
+                foreach (var p in summary.Plugins)
+                {
+                    sb.AppendLine(CultureInfo.InvariantCulture,
+                        $"<tr><td>{Encode(p.Name)}</td><td>{Encode(p.Version ?? "")}</td><td>{Encode(p.IsolationMode)}</td></tr>");
+                }
+                sb.AppendLine("</tbody></table></div></details>");
+            }
+
+            // Forms (unmanaged)
+            if (summary.Forms.Count > 0)
+            {
+                sb.AppendLine("<details>");
+                sb.AppendLine(CultureInfo.InvariantCulture,
+                    $"<summary><h3>Custom Forms ({summary.Forms.Count})</h3></summary>");
+                sb.AppendLine("<div class=\"table-scroll\"><table><thead><tr><th>Entity</th><th>Name</th><th>Type</th></tr></thead><tbody>");
+                foreach (var f in summary.Forms)
+                {
+                    sb.AppendLine(CultureInfo.InvariantCulture,
+                        $"<tr><td>{Encode(f.Entity)}</td><td>{Encode(f.Name)}</td><td>{Encode(f.FormType)}</td></tr>");
+                }
+                sb.AppendLine("</tbody></table></div></details>");
+            }
+
+            // Custom Entities
+            if (summary.Entities.Count > 0)
+            {
+                sb.AppendLine("<details>");
+                sb.AppendLine(CultureInfo.InvariantCulture,
+                    $"<summary><h3>Custom / Customized Entities ({summary.Entities.Count})</h3></summary>");
+                sb.AppendLine("<div class=\"table-scroll\"><table><thead><tr><th>Logical Name</th><th>Display Name</th><th>Custom</th><th>Managed</th></tr></thead><tbody>");
+                foreach (var e in summary.Entities)
+                {
+                    sb.AppendLine(CultureInfo.InvariantCulture,
+                        $"<tr><td>{Encode(e.LogicalName)}</td><td>{Encode(e.DisplayName ?? "")}</td><td>{(e.IsCustom ? "Yes" : "No")}</td><td>{(e.IsManaged ? "Yes" : "No")}</td></tr>");
+                }
+                sb.AppendLine("</tbody></table></div></details>");
+            }
+
+            // Web Resources (unmanaged, capped at 100)
+            if (summary.WebResources.Count > 0)
+            {
+                sb.AppendLine("<details>");
+                sb.AppendLine(CultureInfo.InvariantCulture,
+                    $"<summary><h3>Custom Web Resources ({summary.WebResources.Count})</h3></summary>");
+                sb.AppendLine("<div class=\"table-scroll\"><table><thead><tr><th>Name</th><th>Type</th></tr></thead><tbody>");
+                foreach (var w in summary.WebResources)
+                {
+                    sb.AppendLine(CultureInfo.InvariantCulture,
+                        $"<tr><td>{Encode(w.Name)}</td><td>{Encode(w.Type)}</td></tr>");
+                }
+                sb.AppendLine("</tbody></table></div></details>");
+            }
+        }
+
+        sb.AppendLine("</section>");
+    }
+
+    // ── Executive Summary ───────────────────────────────────
+
+    private static void AppendExecutiveSummary(StringBuilder sb, RiskReport report)
+    {
+        sb.AppendLine("<section class=\"executive-summary\">");
+        sb.AppendLine("<h2>Executive Summary</h2>");
+
+        var observations = new List<string>();
+
+        // Platform info
+        foreach (var ss in report.SettingsSnapshots)
+        {
+            if (!string.IsNullOrEmpty(ss.DataverseVersion))
+            {
+                observations.Add($"Dataverse platform version <strong>{Encode(ss.DataverseVersion)}</strong>.");
+            }
+
+            if (ss.ScanDuration.HasValue)
+            {
+                observations.Add($"Snapshot captured in <strong>{ss.ScanDuration.Value.TotalSeconds:F0}s</strong>.");
+            }
+        }
+
+        // Solution landscape
+        foreach (var inv in report.SolutionInventories)
+        {
+            var custom = inv.Solutions.Where(s => !s.IsMicrosoft).ToList();
+            var msft = inv.Solutions.Where(s => s.IsMicrosoft).ToList();
+            var totalCustomComponents = custom.Sum(s => s.TotalComponents);
+
+            observations.Add($"<strong>{custom.Count}</strong> custom solution(s) with <strong>{totalCustomComponents.ToString("N0", CultureInfo.InvariantCulture)}</strong> components, alongside <strong>{msft.Count}</strong> Microsoft solution(s).");
+
+            // Default solution warning
+            var defaultSol = inv.Solutions.FirstOrDefault(s =>
+                s.UniqueName.Equals("Default", StringComparison.OrdinalIgnoreCase));
+            if (defaultSol is not null && defaultSol.TotalComponents > 1000)
+            {
+                observations.Add($"&#9888; The <strong>Default Solution</strong> contains <strong>{defaultSol.TotalComponents.ToString("N0", CultureInfo.InvariantCulture)}</strong> components &mdash; this indicates significant unmanaged customization that should be moved into dedicated solutions for ALM governance.");
+            }
+        }
+
+        // Settings highlights
+        foreach (var ss in report.SettingsSnapshots)
+        {
+            var auditOff = ss.Settings.FirstOrDefault(s => s.Key == "isauditenabled");
+            if (auditOff is { Value: "False" or "false" })
+            {
+                observations.Add("&#9888; <strong>Organization auditing is disabled.</strong> Consider enabling it for compliance and traceability.");
+            }
+
+            var pluginTrace = ss.Settings.FirstOrDefault(s => s.Key == "plugintracelogsetting");
+            if (pluginTrace is { Value: "2" })
+            {
+                observations.Add("&#9888; Plugin trace logging is set to <strong>All</strong>. This causes performance overhead &mdash; set to <em>Exception</em> in production.");
+            }
+            else if (pluginTrace is { Value: "0" })
+            {
+                observations.Add("Plugin trace logging is <strong>Off</strong>. Consider setting to <em>Exception</em> for troubleshooting support.");
+            }
+
+            var sessionTimeout = ss.Settings.FirstOrDefault(s => s.Key == "sessiontimeoutenabled");
+            if (sessionTimeout is { Value: "False" or "false" })
+            {
+                observations.Add("Session timeout is <strong>not enforced</strong>. Consider enabling for security compliance.");
+            }
+        }
+
+        // Risk summary
+        var level = report.OverallRiskLevel;
+        var score = report.OverallRiskScore;
+        observations.Add($"Overall risk assessment: <strong>{level}</strong> ({score}/100) with <strong>{report.Findings.Count}</strong> finding(s).");
+
+        sb.AppendLine("<ul class=\"exec-observations\">");
+        foreach (var obs in observations)
+        {
+            sb.AppendLine($"<li>{obs}</li>");
+        }
+
+        sb.AppendLine("</ul>");
+        sb.AppendLine("</section>");
+    }
+
+    // ── Organization Settings Audit ─────────────────────────
+
+    private static void AppendSettingsAudit(StringBuilder sb, RiskReport report)
+    {
+        if (report.SettingsSnapshots.Count == 0)
+        {
+            return;
+        }
+
+        sb.AppendLine("<section class=\"settings-audit\">");
+        sb.AppendLine("<h2>Organization Settings</h2>");
+        sb.AppendLine("<p class=\"meta\">Key configuration values from the Dataverse Organization entity. Review for security and governance compliance.</p>");
+
+        foreach (var ss in report.SettingsSnapshots)
+        {
+            if (ss.Settings.Count == 0)
+            {
+                continue;
+            }
+
+            sb.AppendLine("<div class=\"table-scroll\">");
+            sb.AppendLine("<table><thead><tr><th>Category</th><th>Setting</th><th>Value</th><th>Assessment</th></tr></thead><tbody>");
+
+            foreach (var setting in ss.Settings.OrderBy(s => s.Category, StringComparer.OrdinalIgnoreCase).ThenBy(s => s.Key, StringComparer.OrdinalIgnoreCase))
+            {
+                var (displayValue, assessment) = AssessSettingValue(setting);
+                sb.AppendLine(CultureInfo.InvariantCulture,
+                    $"<tr><td>{Encode(setting.Category)}</td><td title=\"{Encode(setting.Description ?? "")}\">{Encode(setting.Key)}</td><td><code>{Encode(displayValue)}</code></td><td>{assessment}</td></tr>");
+            }
+
+            sb.AppendLine("</tbody></table>");
+            sb.AppendLine("</div>");
+        }
+
+        sb.AppendLine("</section>");
+    }
+
+    private static (string DisplayValue, string Assessment) AssessSettingValue(EnvironmentSetting setting)
+    {
+        var raw = setting.Value ?? "(null)";
+
+        return setting.Key switch
+        {
+            "isauditenabled" => raw is "True" or "true"
+                ? (raw, "<span class=\"tag low\">OK</span>")
+                : (raw, "<span class=\"tag high\">Review</span>"),
+
+            "isuseraccessauditenabled" => raw is "True" or "true"
+                ? (raw, "<span class=\"tag low\">OK</span>")
+                : (raw, "<span class=\"tag medium\">Review</span>"),
+
+            "plugintracelogsetting" => raw switch
+            {
+                "0" => ("Off", "<span class=\"tag info\">Off</span>"),
+                "1" => ("Exception", "<span class=\"tag low\">OK</span>"),
+                "2" => ("All", "<span class=\"tag high\">Performance risk</span>"),
+                _ => (raw, "<span class=\"tag info\">&mdash;</span>")
+            },
+
+            "sessiontimeoutenabled" => raw is "True" or "true"
+                ? (raw, "<span class=\"tag low\">OK</span>")
+                : (raw, "<span class=\"tag medium\">Review</span>"),
+
+            "maxuploadfilesize" => int.TryParse(raw, CultureInfo.InvariantCulture, out var sizeKb)
+                ? ($"{sizeKb / 1024} MB", sizeKb > 131_072 ? "<span class=\"tag medium\">Large</span>" : "<span class=\"tag low\">OK</span>")
+                : (raw, "<span class=\"tag info\">&mdash;</span>"),
+
+            "blockedattachments" => string.IsNullOrWhiteSpace(raw) || raw == "(null)"
+                ? ("(none)", "<span class=\"tag high\">No blocklist</span>")
+                : (raw.Length > 60 ? raw[..60] + "..." : raw, "<span class=\"tag low\">OK</span>"),
+
+            _ => (raw, "<span class=\"tag info\">&mdash;</span>")
+        };
+    }
+
+    private static string BuildVersionBadge(RiskReport report)
+    {
+        var version = report.SettingsSnapshots
+            .Select(s => s.DataverseVersion)
+            .FirstOrDefault(v => !string.IsNullOrEmpty(v));
+
+        return version is not null
+            ? $" &middot; Dataverse v{Encode(version)}"
+            : "";
+    }
+
     // ── Severity Section ────────────────────────────────────
 
     private static void AppendSeveritySection(StringBuilder sb, RiskReport report)
@@ -245,17 +628,27 @@ internal sealed class HtmlReportExporter
 
         sb.AppendLine("<div class=\"table-scroll\">");
         sb.AppendLine("<table><thead><tr><th>Category</th><th>Scope</th><th>Applicable</th><th>Findings</th></tr></thead><tbody>");
-        foreach (var category in Enum.GetValues<FindingCategory>().OrderBy(c => c.ToString(), StringComparer.Ordinal))
+
+        // Show applicable categories first, then non-applicable collapsed
+        var allCategories = Enum.GetValues<FindingCategory>().OrderBy(c => c.ToString(), StringComparer.Ordinal).ToList();
+        var applicableCategories = allCategories.Where(c => CategoryHelper.IsCategoryApplicable(c, envCount, hasProdLike) || categoryCounts.ContainsKey(c)).ToList();
+        var nonApplicable = allCategories.Except(applicableCategories).ToList();
+
+        foreach (var category in applicableCategories)
         {
             categoryCounts.TryGetValue(category, out var count);
             var scope = CategoryHelper.GetCategoryScope(category);
-            var applicable = CategoryHelper.IsCategoryApplicable(category, envCount, hasProdLike) ? "yes" : "no";
             sb.AppendLine(CultureInfo.InvariantCulture,
-                $"<tr><td>{Encode(category.ToString())}</td><td>{Encode(scope)}</td><td>{applicable}</td><td>{count}</td></tr>");
+                $"<tr><td>{Encode(category.ToString())}</td><td>{Encode(scope)}</td><td>yes</td><td>{count}</td></tr>");
         }
+
         sb.AppendLine("</tbody></table>");
         sb.AppendLine("</div>");
-        sb.AppendLine("<p class=\"meta\">Applicable=no means the check is out of scope for the current run shape.</p>");
+        if (nonApplicable.Count > 0)
+        {
+            sb.AppendLine(CultureInfo.InvariantCulture,
+                $"<p class=\"meta\">{nonApplicable.Count} additional check(s) not applicable to the current run shape (e.g. cross-environment checks require 2+ environments).</p>");
+        }
         sb.AppendLine("</section>");
     }
 
@@ -649,6 +1042,14 @@ internal sealed class HtmlReportExporter
             .ai-commentary { font-size: .88rem; margin: .3rem 0; }
             .ai-actions { margin: .3rem 0 0 1.2rem; font-size: .85rem; }
             .ai-section .ai-summary { background: var(--card); border: 1px solid var(--border); border-radius: .5rem; padding: 1rem; margin: .5rem 0; }
+
+            /* Executive Summary */
+            .exec-observations { list-style: none; padding: 0; }
+            .exec-observations li { padding: .5rem .75rem; border-left: 3px solid var(--border); margin: .4rem 0; font-size: .92rem; background: var(--card); border-radius: 0 .3rem .3rem 0; }
+            .exec-observations li:has(strong) { border-left-color: #5b8def; }
+
+            /* Settings Audit */
+            .settings-audit code { background: var(--gauge-bg); padding: .1rem .35rem; border-radius: .2rem; font-size: .85rem; }
 
             /* Footer */
             footer { margin-top: 3rem; text-align: center; color: var(--muted); font-size: .8rem; }
