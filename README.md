@@ -178,7 +178,7 @@ Reports are written to `--output` (default `./output`):
 
 ## License
 
-MIT
+Released under the [MIT License](LICENSE). Copyright (c) 2026 Sebastian Ziemann.
 
 ## Disclaimer
 
